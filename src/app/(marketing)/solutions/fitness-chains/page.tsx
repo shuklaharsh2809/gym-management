@@ -1,6 +1,7 @@
 import { BarChart3, Building2, Repeat, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
 import { FeatureGrid, Hero, Section } from "@/components/shared/marketing";
+import { PHOTOS } from "@/lib/imagery";
 
 export const metadata: Metadata = { title: "For fitness chains" };
 
@@ -8,6 +9,7 @@ export default function ChainsPage() {
   return (
     <>
       <Hero
+        photo={PHOTOS.gymInterior}
         eyebrow="Multi-branch chains & franchises"
         title="Run every branch from one source of truth"
         body="Branch teams work locally; leadership sees the whole business with consistent numbers."

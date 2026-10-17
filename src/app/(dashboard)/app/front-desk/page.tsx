@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { PermissionNotice } from "@/components/shared/permission-notice";
-import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +14,7 @@ import { getActiveBranchState } from "@/server/active-branch";
 import { requireOrganizationContext } from "@/server/auth/session";
 import { hasPermission } from "@/server/authorization/guards";
 import { db } from "@/server/database/client";
+import { BranchPicker } from "./branch-picker";
 import { CheckInResults, CheckOutButton } from "./check-in-panel";
 
 export const metadata: Metadata = { title: "Front desk" };
@@ -26,14 +26,19 @@ export default async function FrontDeskPage({
 }) {
   const ctx = await requireOrganizationContext();
   if (!hasPermission(ctx, "attendance.checkin")) return <PermissionNotice what="the front desk" />;
-  const { activeBranch } = await getActiveBranchState();
+  const { activeBranch, branches } = await getActiveBranchState();
   if (!activeBranch) {
     return (
       <>
-        <PageHeader title="Front desk" />
-        <Alert tone="info">
-          Choose the branch you&apos;re working at from the branch selector at the top of the page.
-        </Alert>
+        <PageHeader
+          title="Front desk"
+          description="Choose the branch you're working at to start checking members in."
+        />
+        <BranchPicker
+          branches={branches
+            .filter((b) => b.status === "ACTIVE")
+            .map((b) => ({ id: b.id, name: b.name, city: b.city }))}
+        />
       </>
     );
   }

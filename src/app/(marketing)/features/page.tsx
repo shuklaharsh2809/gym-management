@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { Metadata } from "next";
 import { FeatureGrid, Hero, Section } from "@/components/shared/marketing";
+import { PHOTOS } from "@/lib/imagery";
 
 export const metadata: Metadata = { title: "Features" };
 
@@ -21,6 +22,7 @@ export default function FeaturesPage() {
   return (
     <>
       <Hero
+        photo={PHOTOS.cardioFloor}
         eyebrow="Features"
         title="Everything a fitness business runs on"
         body="One platform for members, money, schedules, staff and facilities."

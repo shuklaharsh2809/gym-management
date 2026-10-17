@@ -14,7 +14,7 @@ test("account → organization → branch, with audit history", async ({ page })
     branch: "Indiranagar",
   });
 
-  await expect(page.getByRole("heading", { name: "Welcome, Asha" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Welcome back, Asha" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Organization: Pulse Athletics/ })).toBeVisible();
   await page.goto("/app/organization/branches");
   await expect(page.getByRole("link", { name: "Indiranagar" })).toBeVisible();

@@ -1,10 +1,18 @@
 import type { ReactNode } from "react";
+import { PhotoBackdrop } from "@/components/business/photo";
 import { Logo } from "@/components/shared/logo";
+import { PHOTOS } from "@/lib/imagery";
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="grid min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-      <aside className="hidden flex-col justify-between bg-brand p-10 text-white lg:flex">
+      <aside className="relative isolate hidden flex-col justify-between overflow-hidden bg-brand p-10 text-white lg:flex">
+        <PhotoBackdrop
+          photo={PHOTOS.squat}
+          priority
+          sizes="42vw"
+          scrim="bg-gradient-to-t from-brand via-brand/70 to-brand/20"
+        />
         <Logo inverted />
         <div>
           <p className="text-3xl font-semibold tracking-tight">

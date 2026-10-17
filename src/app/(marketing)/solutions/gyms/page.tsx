@@ -1,6 +1,7 @@
 import { Clock, CreditCard, Smile } from "lucide-react";
 import type { Metadata } from "next";
 import { FeatureGrid, Hero, Section } from "@/components/shared/marketing";
+import { PHOTOS } from "@/lib/imagery";
 
 export const metadata: Metadata = { title: "For independent gyms" };
 
@@ -8,6 +9,7 @@ export default function GymsPage() {
   return (
     <>
       <Hero
+        photo={PHOTOS.deadlift}
         eyebrow="Independent gyms & studios"
         title="Spend less time on admin and more on your members"
         body="Set up in an afternoon: add your plans, import members and start checking people in."

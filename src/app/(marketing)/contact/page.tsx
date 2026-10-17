@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Hero } from "@/components/shared/marketing";
+import { PHOTOS } from "@/lib/imagery";
 import { Card, CardContent } from "@/components/ui/card";
 import { ContactForm } from "./contact-form";
 
@@ -9,6 +10,7 @@ export default function ContactPage() {
   return (
     <>
       <Hero
+        photo={PHOTOS.battleRopes}
         eyebrow="Contact"
         title="Let's talk about your gym"
         body="Tell us about your business and we'll show you how FitGrid fits."

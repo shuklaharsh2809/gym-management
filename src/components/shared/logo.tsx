@@ -4,13 +4,14 @@ export function LogoMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" aria-hidden className={cn("size-8", className)}>
       <rect width="32" height="32" rx="8" fill="var(--fg-emerald-500)" />
-      <path
-        d="M9 9h14M9 9v14M9 16h9M16 16v7M23 16v7"
-        stroke="var(--fg-navy-900)"
-        strokeWidth="3"
-        strokeLinecap="round"
-        fill="none"
-      />
+      {/* Dumbbell: two plates on each side of a bar. */}
+      <g fill="var(--fg-navy-900)">
+        <rect x="5" y="11" width="3" height="10" rx="1.2" />
+        <rect x="8.5" y="8.5" width="3.5" height="15" rx="1.5" />
+        <rect x="20" y="8.5" width="3.5" height="15" rx="1.5" />
+        <rect x="24" y="11" width="3" height="10" rx="1.2" />
+        <rect x="12" y="14.5" width="8" height="3" rx="1" />
+      </g>
     </svg>
   );
 }
