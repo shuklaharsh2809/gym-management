@@ -17,6 +17,10 @@ import { hasPermission } from "@/server/authorization/guards";
 import { db } from "@/server/database/client";
 import { bpsToPercent } from "@/server/forms";
 import { orNotFound } from "@/server/pages";
+import { newIdempotencyKey } from "@/server/forms";
+import { returnSaleAction } from "../../../inventory/actions";
+import { SimpleForm } from "@/components/shared/simple-form";
+import { Input } from "@/components/ui/input";
 import {
   recordPaymentAction,
   refundPaymentAction,
@@ -259,6 +263,46 @@ export default async function InvoicePage({
               )}
             </CardContent>
           </Card>
+
+          {invoice.source === "POS" &&
+            canRefund &&
+            invoice.amountRefundedMinor < invoice.amountPaidMinor && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Return items</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <SimpleForm
+                    action={returnSaleAction.bind(null, invoice.id)}
+                    submit="Return and refund"
+                    variant="danger"
+                  >
+                    <input type="hidden" name="idempotencyKey" value={newIdempotencyKey()} />
+                    {invoice.lines
+                      .filter((l) => l.productId)
+                      .map((l) => (
+                        <label
+                          key={l.id}
+                          className="flex items-center justify-between gap-2 text-sm"
+                        >
+                          <span>{l.description}</span>
+                          <input type="hidden" name="productId" value={l.productId!} />
+                          <Input
+                            name="quantity"
+                            type="number"
+                            min={0}
+                            max={l.quantity}
+                            defaultValue={0}
+                            className="w-20"
+                            aria-label={`Return quantity for ${l.description}`}
+                          />
+                        </label>
+                      ))}
+                    <Input name="reason" placeholder="Reason" aria-label="Reason" />
+                  </SimpleForm>
+                </CardContent>
+              </Card>
+            )}
 
           {invoice.status === "OPEN" &&
             invoice.amountPaidMinor === 0 &&

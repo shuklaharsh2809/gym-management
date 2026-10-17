@@ -145,36 +145,47 @@ model Organization {
   createdAt                     DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  branches           Branch[]
-  memberships        OrganizationMembership[]
-  branchAssignments  BranchAssignment[]
-  auditLogs          AuditLog[]
-  invitations        Invitation[]
-  invitationBranches InvitationBranch[]
-  members            Member[]
-  planBranches       PlanBranch[]
-  gymMemberships     GymMembership[]
-  invoices           Invoice[]
-  payments           Payment[]
-  checkIns           CheckIn[]
-  sequences          OrganizationSequence[]
-  memberNotes        MemberNote[]
-  plans              MembershipPlan[]
-  membershipChanges  MembershipChange[]
-  invoiceLines       InvoiceLine[]
-  refunds            Refund[]
-  paymentAttempts    PaymentAttempt[]
-  leads              Lead[]
-  leadActivities     LeadActivity[]
-  followUps          FollowUp[]
-  employees          Employee[]
-  shifts             Shift[]
-  leaveRequests      LeaveRequest[]
-  rooms              Room[]
-  classTypes         ClassType[]
-  classSessions      ClassSession[]
-  bookings           Booking[]
-  trainingSessions   TrainingSession[]
+  branches              Branch[]
+  memberships           OrganizationMembership[]
+  branchAssignments     BranchAssignment[]
+  auditLogs             AuditLog[]
+  invitations           Invitation[]
+  invitationBranches    InvitationBranch[]
+  members               Member[]
+  planBranches          PlanBranch[]
+  gymMemberships        GymMembership[]
+  invoices              Invoice[]
+  payments              Payment[]
+  checkIns              CheckIn[]
+  sequences             OrganizationSequence[]
+  memberNotes           MemberNote[]
+  plans                 MembershipPlan[]
+  membershipChanges     MembershipChange[]
+  invoiceLines          InvoiceLine[]
+  refunds               Refund[]
+  paymentAttempts       PaymentAttempt[]
+  leads                 Lead[]
+  leadActivities        LeadActivity[]
+  followUps             FollowUp[]
+  employees             Employee[]
+  shifts                Shift[]
+  leaveRequests         LeaveRequest[]
+  rooms                 Room[]
+  classTypes            ClassType[]
+  classSessions         ClassSession[]
+  bookings              Booking[]
+  trainingSessions      TrainingSession[]
+  suppliers             Supplier[]
+  equipment             Equipment[]
+  maintenanceSchedules  MaintenanceSchedule[]
+  maintenanceWorkOrders MaintenanceWorkOrder[]
+  equipmentTransfers    EquipmentTransfer[]
+  products              Product[]
+  productStocks         ProductStock[]
+  stockMovements        StockMovement[]
+  purchaseOrders        PurchaseOrder[]
+  purchaseOrderLines    PurchaseOrderLine[]
+  expenses              Expense[]
 
   @@map("organizations")
 }
@@ -198,21 +209,29 @@ model Branch {
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  assignments        BranchAssignment[]
-  invitationBranches InvitationBranch[]
-  members            Member[]
-  planBranches       PlanBranch[]
-  gymMemberships     GymMembership[]
-  invoices           Invoice[]
-  payments           Payment[]
-  checkIns           CheckIn[]
-  leads              Lead[]
-  employees          Employee[]
-  shifts             Shift[]
-  rooms              Room[]
-  classSessions      ClassSession[]
-  trainingSessions   TrainingSession[]
+  organization          Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assignments           BranchAssignment[]
+  invitationBranches    InvitationBranch[]
+  members               Member[]
+  planBranches          PlanBranch[]
+  gymMemberships        GymMembership[]
+  invoices              Invoice[]
+  payments              Payment[]
+  checkIns              CheckIn[]
+  leads                 Lead[]
+  employees             Employee[]
+  shifts                Shift[]
+  rooms                 Room[]
+  classSessions         ClassSession[]
+  trainingSessions      TrainingSession[]
+  transfersOut          EquipmentTransfer[]    @relation("TransferFrom")
+  transfersIn           EquipmentTransfer[]    @relation("TransferTo")
+  equipment             Equipment[]
+  maintenanceWorkOrders MaintenanceWorkOrder[]
+  productStocks         ProductStock[]
+  stockMovements        StockMovement[]
+  purchaseOrders        PurchaseOrder[]
+  expenses              Expense[]
 
   // Target for composite foreign keys from branch-owned rows.
   @@unique([id, organizationId])
@@ -232,12 +251,13 @@ model OrganizationMembership {
   createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  user              User               @relation(fields: [userId], references: [id], onDelete: Restrict)
-  branchAssignments BranchAssignment[]
-  leads             Lead[]
-  followUps         FollowUp[]
-  employee          Employee?
+  organization          Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  branchAssignments     BranchAssignment[]
+  leads                 Lead[]
+  followUps             FollowUp[]
+  employee              Employee?
+  maintenanceWorkOrders MaintenanceWorkOrder[]
 
   @@unique([organizationId, userId])
   @@unique([id, organizationId])
@@ -601,13 +621,14 @@ model Invoice {
   createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt           DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  branch       Branch           @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  member       Member?          @relation(fields: [memberId], references: [id], onDelete: Restrict)
-  lines        InvoiceLine[]
-  payments     Payment[]
-  refunds      Refund[]
-  attempts     PaymentAttempt[]
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branch         Branch           @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  member         Member?          @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  lines          InvoiceLine[]
+  payments       Payment[]
+  refunds        Refund[]
+  attempts       PaymentAttempt[]
+  stockMovements StockMovement[]
 
   @@unique([id, organizationId])
   @@unique([organizationId, number])
@@ -634,10 +655,12 @@ model InvoiceLine {
   taxMinor       Int     @map("tax_minor")
   totalMinor     Int     @map("total_minor")
   membershipId   String? @map("membership_id") @db.Uuid
+  productId      String? @map("product_id") @db.Uuid
 
   organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   invoice      Invoice        @relation(fields: [invoiceId, organizationId], references: [id, organizationId], onDelete: Restrict)
   membership   GymMembership? @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  product      Product?       @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@index([organizationId, invoiceId])
   @@index([membershipId])
@@ -1146,6 +1169,342 @@ model TrainingSession {
   @@index([organizationId, trainerId, startsAt])
   @@index([organizationId, memberId])
   @@map("training_sessions")
+}
+
+// ---------------------------------------------------------------------------
+// Suppliers, equipment and maintenance
+// ---------------------------------------------------------------------------
+
+model Supplier {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  name           String
+  contactName    String?      @map("contact_name")
+  email          String?
+  phone          String?
+  notes          String?
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  equipment      Equipment[]
+  purchaseOrders PurchaseOrder[]
+  expenses       Expense[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, name])
+  @@map("suppliers")
+}
+
+enum EquipmentStatus {
+  ACTIVE
+  UNDER_MAINTENANCE
+  OUT_OF_SERVICE
+  RETIRED
+}
+
+model Equipment {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  branchId       String          @map("branch_id") @db.Uuid
+  assetTag       String          @map("asset_tag")
+  name           String
+  category       String
+  brand          String?
+  model          String?
+  serialNumber   String?         @map("serial_number")
+  purchaseDate   DateTime?       @map("purchase_date") @db.Date
+  costMinor      Int?            @map("cost_minor")
+  currency       String          @db.Char(3)
+  supplierId     String?         @map("supplier_id") @db.Uuid
+  warrantyUntil  DateTime?       @map("warranty_until") @db.Date
+  location       String?
+  status         EquipmentStatus @default(ACTIVE)
+  retiredAt      DateTime?       @map("retired_at") @db.Timestamptz(3)
+  notes          String?
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branch       Branch                 @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  supplier     Supplier?              @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  schedules    MaintenanceSchedule[]
+  workOrders   MaintenanceWorkOrder[]
+  transfers    EquipmentTransfer[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, assetTag])
+  @@index([organizationId, branchId, status])
+  @@map("equipment")
+}
+
+model MaintenanceSchedule {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  equipmentId    String    @map("equipment_id") @db.Uuid
+  title          String
+  intervalDays   Int       @map("interval_days")
+  lastDoneOn     DateTime? @map("last_done_on") @db.Date
+  nextDueOn      DateTime  @map("next_due_on") @db.Date
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  equipment    Equipment              @relation(fields: [equipmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  workOrders   MaintenanceWorkOrder[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, nextDueOn])
+  @@map("maintenance_schedules")
+}
+
+enum WorkOrderType {
+  PREVENTIVE
+  CORRECTIVE
+}
+
+enum WorkOrderPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum WorkOrderStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model MaintenanceWorkOrder {
+  id                     String            @id @default(uuid()) @db.Uuid
+  organizationId         String            @map("organization_id") @db.Uuid
+  equipmentId            String            @map("equipment_id") @db.Uuid
+  branchId               String            @map("branch_id") @db.Uuid
+  scheduleId             String?           @map("schedule_id") @db.Uuid
+  type                   WorkOrderType
+  priority               WorkOrderPriority @default(MEDIUM)
+  status                 WorkOrderStatus   @default(OPEN)
+  title                  String
+  description            String?
+  /// Whether the fault took the equipment out of use (for downtime reporting).
+  takesOutOfService      Boolean           @default(false) @map("takes_out_of_service")
+  assignedToMembershipId String?           @map("assigned_to_membership_id") @db.Uuid
+  reportedById           String?           @map("reported_by_id") @db.Uuid
+  openedAt               DateTime          @default(now()) @map("opened_at") @db.Timestamptz(3)
+  startedAt              DateTime?         @map("started_at") @db.Timestamptz(3)
+  completedAt            DateTime?         @map("completed_at") @db.Timestamptz(3)
+  resolution             String?
+  costMinor              Int               @default(0) @map("cost_minor")
+
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  equipment    Equipment               @relation(fields: [equipmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  branch       Branch                  @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  schedule     MaintenanceSchedule?    @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
+  assignedTo   OrganizationMembership? @relation(fields: [assignedToMembershipId], references: [id], onDelete: SetNull)
+  expenses     Expense[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, equipmentId])
+  @@map("maintenance_work_orders")
+}
+
+model EquipmentTransfer {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  equipmentId    String   @map("equipment_id") @db.Uuid
+  fromBranchId   String   @map("from_branch_id") @db.Uuid
+  toBranchId     String   @map("to_branch_id") @db.Uuid
+  note           String?
+  actorId        String?  @map("actor_id") @db.Uuid
+  transferredAt  DateTime @default(now()) @map("transferred_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  equipment    Equipment    @relation(fields: [equipmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  fromBranch   Branch       @relation("TransferFrom", fields: [fromBranchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  toBranch     Branch       @relation("TransferTo", fields: [toBranchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([organizationId, equipmentId])
+  @@map("equipment_transfers")
+}
+
+// ---------------------------------------------------------------------------
+// Inventory and purchasing
+// ---------------------------------------------------------------------------
+
+model Product {
+  id                String       @id @default(uuid()) @db.Uuid
+  organizationId    String       @map("organization_id") @db.Uuid
+  sku               String
+  name              String
+  category          String?
+  barcode           String?
+  priceMinor        Int          @map("price_minor")
+  costMinor         Int          @default(0) @map("cost_minor")
+  currency          String       @db.Char(3)
+  taxRateBps        Int          @default(0) @map("tax_rate_bps")
+  taxInclusive      Boolean      @default(true) @map("tax_inclusive")
+  lowStockThreshold Int          @default(0) @map("low_stock_threshold")
+  status            RecordStatus @default(ACTIVE)
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  stock              ProductStock[]
+  movements          StockMovement[]
+  purchaseOrderLines PurchaseOrderLine[]
+  invoiceLines       InvoiceLine[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, sku])
+  @@map("products")
+}
+
+/// Current on-hand quantity per branch. Always changed together with a StockMovement row.
+model ProductStock {
+  productId      String @map("product_id") @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  branchId       String @map("branch_id") @db.Uuid
+  quantity       Int    @default(0)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  product      Product      @relation(fields: [productId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  branch       Branch       @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@id([productId, branchId])
+  @@map("product_stock")
+}
+
+enum StockMovementType {
+  RECEIPT
+  SALE
+  RETURN
+  ADJUSTMENT
+  DAMAGE
+  TRANSFER_OUT
+  TRANSFER_IN
+}
+
+/// Append-only ledger of stock changes. quantity is signed (+ in, − out).
+model StockMovement {
+  id              String            @id @default(uuid()) @db.Uuid
+  organizationId  String            @map("organization_id") @db.Uuid
+  productId       String            @map("product_id") @db.Uuid
+  branchId        String            @map("branch_id") @db.Uuid
+  type            StockMovementType
+  quantity        Int
+  reason          String?
+  purchaseOrderId String?           @map("purchase_order_id") @db.Uuid
+  invoiceId       String?           @map("invoice_id") @db.Uuid
+  transferGroupId String?           @map("transfer_group_id") @db.Uuid
+  actorId         String?           @map("actor_id") @db.Uuid
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  product       Product        @relation(fields: [productId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  branch        Branch         @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: Restrict)
+  invoice       Invoice?       @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, productId, createdAt])
+  @@index([organizationId, branchId, createdAt])
+  @@map("stock_movements")
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  ORDERED
+  RECEIVED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
+  number         String
+  supplierId     String              @map("supplier_id") @db.Uuid
+  branchId       String              @map("branch_id") @db.Uuid
+  status         PurchaseOrderStatus @default(DRAFT)
+  currency       String              @db.Char(3)
+  totalCostMinor Int                 @map("total_cost_minor")
+  notes          String?
+  orderedAt      DateTime?           @map("ordered_at") @db.Timestamptz(3)
+  receivedAt     DateTime?           @map("received_at") @db.Timestamptz(3)
+  createdById    String?             @map("created_by_id") @db.Uuid
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  supplier     Supplier            @relation(fields: [supplierId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  branch       Branch              @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  lines        PurchaseOrderLine[]
+  movements    StockMovement[]
+  expenses     Expense[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, number])
+  @@index([organizationId, status])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderLine {
+  id              String @id @default(uuid()) @db.Uuid
+  organizationId  String @map("organization_id") @db.Uuid
+  purchaseOrderId String @map("purchase_order_id") @db.Uuid
+  productId       String @map("product_id") @db.Uuid
+  quantity        Int
+  unitCostMinor   Int    @map("unit_cost_minor")
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  product       Product       @relation(fields: [productId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@map("purchase_order_lines")
+}
+
+// ---------------------------------------------------------------------------
+// Expenses
+// ---------------------------------------------------------------------------
+
+enum ExpenseCategory {
+  RENT
+  UTILITIES
+  SALARIES
+  MAINTENANCE
+  EQUIPMENT
+  SUPPLIES
+  MARKETING
+  OTHER
+}
+
+model Expense {
+  id              String          @id @default(uuid()) @db.Uuid
+  organizationId  String          @map("organization_id") @db.Uuid
+  branchId        String          @map("branch_id") @db.Uuid
+  category        ExpenseCategory
+  description     String
+  amountMinor     Int             @map("amount_minor")
+  currency        String          @db.Char(3)
+  incurredOn      DateTime        @map("incurred_on") @db.Date
+  paymentMethod   PaymentMethod   @map("payment_method")
+  reference       String?
+  supplierId      String?         @map("supplier_id") @db.Uuid
+  workOrderId     String?         @map("work_order_id") @db.Uuid
+  purchaseOrderId String?         @map("purchase_order_id") @db.Uuid
+  voidedAt        DateTime?       @map("voided_at") @db.Timestamptz(3)
+  voidReason      String?         @map("void_reason")
+  createdById     String?         @map("created_by_id") @db.Uuid
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization  Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branch        Branch                @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  supplier      Supplier?             @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  workOrder     MaintenanceWorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  purchaseOrder PurchaseOrder?        @relation(fields: [purchaseOrderId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, branchId, incurredOn])
+  @@map("expenses")
 }
 
 // ---------------------------------------------------------------------------

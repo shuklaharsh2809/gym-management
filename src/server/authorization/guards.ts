@@ -10,6 +10,14 @@ export function requirePermission(ctx: OrganizationContext, permission: Permissi
   if (!hasPermission(ctx, permission)) throw new ForbiddenError();
 }
 
+/** Passes if the user has at least one of the permissions. */
+export function requireAnyPermission(
+  ctx: OrganizationContext,
+  permissions: readonly Permission[],
+): void {
+  if (!permissions.some((p) => ctx.permissions.has(p))) throw new ForbiddenError();
+}
+
 export function hasOrganizationWideAccess(ctx: OrganizationContext): boolean {
   return ctx.branchScope.kind === "all";
 }

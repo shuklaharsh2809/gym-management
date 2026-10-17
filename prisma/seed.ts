@@ -8,7 +8,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { hashPassword } from "better-auth/crypto";
 import { PrismaClient } from "../src/generated/prisma/client";
 import type { BranchAccessScope, OrganizationRole } from "../src/generated/prisma/enums";
-import { seedOperations, seedTeamAndSchedule } from "./seed-operations";
+import { seedFacilities, seedOperations, seedTeamAndSchedule } from "./seed-operations";
 
 export const DEMO_PASSWORD = "FitGrid-demo-2026";
 
@@ -189,6 +189,8 @@ async function main() {
       console.log(`+ ${org.name}: plans, members, invoices and visits`);
     if (await seedTeamAndSchedule(db, record.id, owner))
       console.log(`+ ${org.name}: staff, classes, bookings, shifts and leads`);
+    if (await seedFacilities(db, record.id, owner))
+      console.log(`+ ${org.name}: suppliers, equipment, inventory and expenses`);
   }
 
   console.log(`\nDemo accounts (password for all: ${DEMO_PASSWORD}):`);

@@ -8,6 +8,7 @@ import type { OrganizationContext } from "@/server/authorization/context";
 import {
   canAccessBranch,
   hasPermission,
+  requireAnyPermission,
   requireBranchAccess,
   requirePermission,
 } from "@/server/authorization/guards";
@@ -58,8 +59,7 @@ export async function listEmployees(
 
 /** Trainers available for scheduling (any staff-read or schedule user can see names). */
 export async function listTrainers(db: DbClient, ctx: OrganizationContext) {
-  if (!hasPermission(ctx, "schedule.read") && !hasPermission(ctx, "staff.read"))
-    throw new ForbiddenError();
+  requireAnyPermission(ctx, ["schedule.read", "staff.read"]);
   return db.employee.findMany({
     where: { organizationId: ctx.organizationId, isTrainer: true, status: { not: "TERMINATED" } },
     orderBy: [{ firstName: "asc" }],
