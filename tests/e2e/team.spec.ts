@@ -12,6 +12,7 @@ test("invite a branch manager, restrict them to one branch, then suspend them", 
     organization: "Core Collective",
     branch: "Main Street",
   });
+  await owner.goto("/app/organization/branches");
   await owner.getByRole("link", { name: "Main Street" }).click();
   await expect(owner.getByRole("heading", { name: "Main Street" })).toBeVisible();
   const mainBranchUrl = owner.url();
@@ -49,6 +50,7 @@ test("invite a branch manager, restrict them to one branch, then suspend them", 
 
   // Only Riverside is visible; Main Street is not reachable by URL.
   await expect(manager.getByRole("button", { name: /Branch: Riverside/ })).toBeVisible();
+  await manager.goto("/app/organization/branches");
   await expect(manager.getByRole("link", { name: "Riverside" })).toBeVisible();
   await expect(manager.getByRole("link", { name: "Main Street" })).toHaveCount(0);
   await manager.goto(new URL(mainBranchUrl).pathname);
