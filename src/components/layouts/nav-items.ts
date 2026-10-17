@@ -1,5 +1,12 @@
 import {
+  Boxes,
   Building2,
+  ClipboardList,
+  Cog,
+  HandCoins,
+  ShoppingBag,
+  Truck,
+  Wrench,
   CalendarClock,
   CalendarDays,
   CalendarRange,
@@ -86,6 +93,33 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    label: "Operations",
+    items: [
+      { href: "/app/pos", label: "Point of sale", icon: ShoppingBag, permission: "pos.sell" },
+      {
+        href: "/app/inventory",
+        label: "Inventory",
+        icon: Boxes,
+        permission: "inventory.read",
+        exact: true,
+      },
+      {
+        href: "/app/inventory/purchase-orders",
+        label: "Purchase orders",
+        icon: ClipboardList,
+        permission: "inventory.read",
+      },
+      { href: "/app/suppliers", label: "Suppliers", icon: Truck, permission: "inventory.read" },
+      { href: "/app/equipment", label: "Equipment", icon: Cog, permission: "equipment.read" },
+      {
+        href: "/app/maintenance",
+        label: "Maintenance",
+        icon: Wrench,
+        permission: "equipment.read",
+      },
+    ],
+  },
+  {
     label: "Finance",
     items: [
       {
@@ -99,6 +133,12 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Payments",
         icon: Wallet,
         permission: "payments.collect",
+      },
+      {
+        href: "/app/finance/expenses",
+        label: "Expenses",
+        icon: HandCoins,
+        permission: "expenses.read",
       },
     ],
   },
