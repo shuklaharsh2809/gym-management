@@ -2,6 +2,7 @@ import { Check } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Hero, Section } from "@/components/shared/marketing";
+import { PHOTOS } from "@/lib/imagery";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatMoney } from "@/lib/money";
@@ -26,6 +27,7 @@ export default async function PricingPage() {
   return (
     <>
       <Hero
+        photo={PHOTOS.dumbbells}
         eyebrow="Pricing"
         title="Simple plans that grow with you"
         body="Every plan starts with a 14-day free trial. Prices exclude taxes."

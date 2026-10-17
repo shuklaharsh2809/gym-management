@@ -1,22 +1,29 @@
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { PhotoBackdrop } from "@/components/business/photo";
 import { Button } from "@/components/ui/button";
+import type { Photo } from "@/lib/imagery";
 
 export function Hero({
   eyebrow,
   title,
   body,
   cta = true,
+  photo,
 }: {
   eyebrow: string;
   title: string;
   body: string;
   cta?: boolean;
+  photo?: Photo;
 }) {
   return (
-    <section className="bg-brand text-white">
-      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+    <section className="relative isolate bg-brand text-white">
+      {photo && <PhotoBackdrop photo={photo} priority />}
+      <div
+        className={`mx-auto max-w-6xl px-4 sm:px-6 ${photo ? "py-20 sm:py-32" : "py-16 sm:py-24"}`}
+      >
         <p className="text-sm font-medium tracking-wide text-accent uppercase">{eyebrow}</p>
         <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
           {title}
