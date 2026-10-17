@@ -18,6 +18,7 @@ import {
   type MembershipDates,
 } from "./lifecycle";
 import type { SellMembershipInput } from "./schemas";
+import { emitEvent } from "@/modules/integrations/webhooks";
 
 const MAX_BACKDATE_DAYS = 30;
 const MAX_FUTURE_DAYS = 180;
@@ -181,6 +182,13 @@ export async function createMembershipInTx(
     entityType: "membership",
     entityId: membership.id,
     metadata: { memberId: member.id, planId: plan.id, priceMinor: plan.priceMinor },
+  });
+  await emitEvent(tx, ctx.organizationId, "membership.created", {
+    membershipId: membership.id,
+    memberId: member.id,
+    plan: plan.name,
+    startDate: input.startDate,
+    endDate,
   });
   return {
     id: membership.id,
