@@ -90,3 +90,50 @@ export async function twoTenantWorld() {
     managerMembership,
   };
 }
+
+export async function createPlanFixture(
+  organizationId: string,
+  overrides: Partial<Parameters<typeof db.membershipPlan.create>[0]["data"]> & {
+    branchIds?: string[];
+  } = {},
+) {
+  const { branchIds, ...data } = overrides;
+  const plan = await db.membershipPlan.create({
+    data: {
+      organizationId,
+      name: `Plan ${next()}`,
+      durationUnit: "MONTH",
+      durationCount: 1,
+      priceMinor: 250000,
+      currency: "INR",
+      taxRateBps: 1800,
+      taxInclusive: true,
+      maxFreezeDays: 15,
+      gracePeriodDays: 3,
+      allBranches: !branchIds,
+      ...data,
+    } as Parameters<typeof db.membershipPlan.create>[0]["data"],
+  });
+  for (const branchId of branchIds ?? []) {
+    await db.planBranch.create({ data: { planId: plan.id, organizationId, branchId } });
+  }
+  return plan;
+}
+
+export async function createMemberFixture(
+  organizationId: string,
+  homeBranchId: string,
+  name = `Member ${next()}`,
+) {
+  const [firstName, lastName = "Test"] = name.split(" ");
+  return db.member.create({
+    data: {
+      organizationId,
+      homeBranchId,
+      firstName: firstName!,
+      lastName,
+      memberNumber: `M-T${next()}`,
+      phone: `+91990000${String(next()).padStart(4, "0")}`,
+    },
+  });
+}
