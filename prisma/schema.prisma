@@ -145,54 +145,55 @@ model Organization {
   createdAt                     DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  branches                 Branch[]
-  memberships              OrganizationMembership[]
-  branchAssignments        BranchAssignment[]
-  auditLogs                AuditLog[]
-  invitations              Invitation[]
-  invitationBranches       InvitationBranch[]
-  members                  Member[]
-  planBranches             PlanBranch[]
-  gymMemberships           GymMembership[]
-  invoices                 Invoice[]
-  payments                 Payment[]
-  checkIns                 CheckIn[]
-  sequences                OrganizationSequence[]
-  memberNotes              MemberNote[]
-  plans                    MembershipPlan[]
-  membershipChanges        MembershipChange[]
-  invoiceLines             InvoiceLine[]
-  refunds                  Refund[]
-  paymentAttempts          PaymentAttempt[]
-  leads                    Lead[]
-  leadActivities           LeadActivity[]
-  followUps                FollowUp[]
-  employees                Employee[]
-  shifts                   Shift[]
-  leaveRequests            LeaveRequest[]
-  rooms                    Room[]
-  classTypes               ClassType[]
-  classSessions            ClassSession[]
-  bookings                 Booking[]
-  trainingSessions         TrainingSession[]
-  suppliers                Supplier[]
-  equipment                Equipment[]
-  maintenanceSchedules     MaintenanceSchedule[]
-  maintenanceWorkOrders    MaintenanceWorkOrder[]
-  equipmentTransfers       EquipmentTransfer[]
-  products                 Product[]
-  productStocks            ProductStock[]
-  stockMovements           StockMovement[]
-  purchaseOrders           PurchaseOrder[]
-  purchaseOrderLines       PurchaseOrderLine[]
-  expenses                 Expense[]
-  jobs                     Job[]
-  notifications            Notification[]
-  emailDeliveries          EmailDelivery[]
-  webhookEndpoints         WebhookEndpoint[]
-  webhookDeliveries        WebhookDelivery[]
-  importRuns               ImportRun[]
-  organizationSubscription OrganizationSubscription?
+  branches              Branch[]
+  memberships           OrganizationMembership[]
+  branchAssignments     BranchAssignment[]
+  auditLogs             AuditLog[]
+  invitations           Invitation[]
+  invitationBranches    InvitationBranch[]
+  members               Member[]
+  planBranches          PlanBranch[]
+  gymMemberships        GymMembership[]
+  invoices              Invoice[]
+  payments              Payment[]
+  checkIns              CheckIn[]
+  sequences             OrganizationSequence[]
+  memberNotes           MemberNote[]
+  plans                 MembershipPlan[]
+  membershipChanges     MembershipChange[]
+  invoiceLines          InvoiceLine[]
+  refunds               Refund[]
+  paymentAttempts       PaymentAttempt[]
+  leads                 Lead[]
+  leadActivities        LeadActivity[]
+  followUps             FollowUp[]
+  employees             Employee[]
+  shifts                Shift[]
+  leaveRequests         LeaveRequest[]
+  rooms                 Room[]
+  classTypes            ClassType[]
+  classSessions         ClassSession[]
+  bookings              Booking[]
+  trainingSessions      TrainingSession[]
+  suppliers             Supplier[]
+  equipment             Equipment[]
+  maintenanceSchedules  MaintenanceSchedule[]
+  maintenanceWorkOrders MaintenanceWorkOrder[]
+  equipmentTransfers    EquipmentTransfer[]
+  products              Product[]
+  productStocks         ProductStock[]
+  stockMovements        StockMovement[]
+  purchaseOrders        PurchaseOrder[]
+  purchaseOrderLines    PurchaseOrderLine[]
+  expenses              Expense[]
+  jobs                  Job[]
+  notifications         Notification[]
+  emailDeliveries       EmailDelivery[]
+  webhookEndpoints      WebhookEndpoint[]
+  webhookDeliveries     WebhookDelivery[]
+  importRuns            ImportRun[]
+  subscription          OrganizationSubscription?
+  memberDocuments       MemberDocument[]
 
   @@map("organizations")
 }
@@ -408,6 +409,7 @@ model Member {
   leads            Lead[]
   bookings         Booking[]
   trainingSessions TrainingSession[]
+  memberDocuments  MemberDocument[]
 
   @@unique([id, organizationId])
   @@unique([organizationId, memberNumber])
@@ -1701,6 +1703,60 @@ model OrganizationSubscription {
   plan         PlatformPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
 
   @@map("organization_subscriptions")
+}
+
+// ---------------------------------------------------------------------------
+// Member documents (waivers, consent, ID) and public contact requests
+// ---------------------------------------------------------------------------
+
+enum DocumentKind {
+  WAIVER
+  CONSENT
+  ID_PROOF
+  MEDICAL
+  OTHER
+}
+
+/// Files are stored in Postgres (small documents only) so tenant isolation and backups cover them.
+model MemberDocument {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  memberId       String       @map("member_id") @db.Uuid
+  kind           DocumentKind
+  title          String
+  fileName       String       @map("file_name")
+  contentType    String       @map("content_type")
+  sizeBytes      Int          @map("size_bytes")
+  sha256         String
+  content        Bytes
+  /// MEDICAL documents and anything marked sensitive require members.sensitive.read.
+  sensitive      Boolean      @default(false)
+  /// For waivers/consent: when the member signed or agreed.
+  signedAt       DateTime?    @map("signed_at") @db.Timestamptz(3)
+  uploadedById   String?      @map("uploaded_by_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  member       Member       @relation(fields: [memberId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([organizationId, memberId])
+  @@map("member_documents")
+}
+
+/// Enquiries from the public contact form (not tenant data).
+model ContactRequest {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  email     String
+  company   String?
+  locations Int?
+  message   String
+  ipHash    String?  @map("ip_hash")
+  handled   Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([createdAt])
+  @@map("contact_requests")
 }
 
 // ---------------------------------------------------------------------------

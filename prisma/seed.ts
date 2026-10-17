@@ -20,6 +20,7 @@ interface DemoUser {
   key: string;
   name: string;
   email: string;
+  platformRole?: "ADMIN";
 }
 
 const users: DemoUser[] = [
@@ -30,6 +31,12 @@ const users: DemoUser[] = [
   { key: "james", name: "James Whitfield", email: "owner.harbour@example.com" },
   { key: "sam", name: "Sam Okafor", email: "trainer.shoreditch@example.com" },
   { key: "alex", name: "Alex Fernandes", email: "alex.consultant@example.com" },
+  {
+    key: "platform",
+    name: "FitGrid Platform Admin",
+    email: "platform.admin@example.com",
+    platformRole: "ADMIN",
+  },
 ];
 
 interface DemoOrg {
@@ -97,7 +104,12 @@ async function upsertUser(user: DemoUser, passwordHash: string) {
   // Mirror Better Auth's sign-up: the credential account's accountId is the user ID.
   return db.$transaction(async (tx) => {
     const created = await tx.user.create({
-      data: { name: user.name, email: user.email, emailVerified: true },
+      data: {
+        name: user.name,
+        email: user.email,
+        emailVerified: true,
+        platformRole: user.platformRole ?? "NONE",
+      },
     });
     await tx.account.create({
       data: {
