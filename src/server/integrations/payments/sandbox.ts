@@ -43,7 +43,7 @@ export class SandboxPaymentProvider implements PaymentProvider {
     private readonly baseUrl: string,
   ) {}
 
-  createCheckout(attempt: { id: string }): CheckoutSession {
+  createCheckout(_attempt: { id: string }): CheckoutSession {
     const providerReference = `sbx_${randomBytes(12).toString("hex")}`;
     return { providerReference, checkoutUrl: `${this.baseUrl}/sandbox-pay/${providerReference}` };
   }
