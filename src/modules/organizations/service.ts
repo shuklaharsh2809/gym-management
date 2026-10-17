@@ -4,6 +4,7 @@ import type { Database } from "@/server/database/client";
 import type { OrganizationContext } from "@/server/authorization/context";
 import { requirePermission } from "@/server/authorization/guards";
 import type { OnboardingInput, OrganizationProfileInput } from "./schemas";
+import { startTrial } from "@/modules/entitlements/service";
 
 function slugify(name: string): string {
   const base = name
@@ -69,6 +70,7 @@ export async function createOrganizationWithFirstBranch(
       entityId: branch.id,
       metadata: { code: branch.code },
     });
+    await startTrial(tx, organization.id);
     return { organization, membership, branch };
   });
 }
@@ -118,5 +120,27 @@ export async function updateOrganizationProfile(
       metadata: { changedSettings: changed },
     });
     return organization;
+  });
+}
+
+export async function updateOrganizationSettings(
+  db: Database,
+  ctx: OrganizationContext,
+  input: {
+    memberVisibility: "ORGANIZATION" | "HOME_BRANCH";
+    checkInDuplicateWindowMinutes: number;
+  },
+) {
+  requirePermission(ctx, "settings.manage");
+  await db.$transaction(async (tx) => {
+    await tx.organization.update({ where: { id: ctx.organizationId }, data: input });
+    await recordAudit(tx, {
+      organizationId: ctx.organizationId,
+      actorUserId: ctx.userId,
+      action: "organization.settings_updated",
+      entityType: "organization",
+      entityId: ctx.organizationId,
+      metadata: input,
+    });
   });
 }
