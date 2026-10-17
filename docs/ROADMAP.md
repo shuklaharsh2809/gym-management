@@ -1,88 +1,63 @@
 # Roadmap & status
 
 Baseline: [specification §9](../fitgrid-product-spec-and-build-prompt.md#9-delivery-roadmap).
-Update this file at the end of every increment. Don't rebuild what is marked done.
+Update this file at the end of every increment; build on what exists rather than regenerating it.
 
-_Last updated: 2026-10-17 (Increment 2)._
+_Last updated: 2026-10-17 (all eight milestones delivered on branch `full-build`)._
 
-## Status at a glance
+## Status
 
-| Milestone                         | Status                                         |
-| --------------------------------- | ---------------------------------------------- |
-| 1. Foundation & design system     | **Done** (exit criteria met)                   |
-| 2. Authentication & multi-tenancy | **Done** (exit criteria met; see increment 2)  |
-| 3. Members & memberships          | Not started. **Next**, once M2 remainder lands |
-| 4. Billing & attendance           | Not started                                    |
-| 5. Dashboard, CRM, workforce      | Not started                                    |
-| 6. Facility operations            | Not started                                    |
-| 7. Automation & advanced reports  | Not started                                    |
-| 8. QA, deployment, portfolio      | Not started                                    |
+| Milestone                         | Status   | Highlights                                                                                                          |
+| --------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------- |
+| 1. Foundation & design system     | **Done** | Next 16, strict TS, tokens with tested contrast, app shell                                                          |
+| 2. Authentication & multi-tenancy | **Done** | Better Auth, onboarding, roles, branch scope, invitations, team management, audit log                               |
+| 3. Members & memberships          | **Done** | Directory/search, profiles, documents, plans with branch eligibility, lifecycle with history                        |
+| 4. Billing & attendance           | **Done** | Invoices, partial payments, refunds, voids, sandbox online payments + webhooks, front desk, attendance              |
+| 5. Dashboard, CRM & workforce     | **Done** | Shared KPIs + charts, leads pipeline/follow-ups/conversion, staff, shifts, leave, classes, bookings, PT             |
+| 6. Facility operations            | **Done** | Equipment, maintenance, transfers, suppliers, inventory ledger, purchase orders, POS, expenses                      |
+| 7. Automation & advanced reports  | **Done** | Job queue, daily reminders, notifications, email log, outbound webhooks, reports, CSV import/export, plan limits    |
+| 8. QA, deployment & portfolio     | **Done** | Platform admin, marketing site, CSP/HSTS, health check, CI, cron config, axe scans, backup drill, docs, walkthrough |
 
-## Increment 1 (2026-10-17): foundation + tenant core ✅
+Verification at completion: 199 unit/integration tests, 10 E2E tests (incl. spec §12 vertical slice and
+axe), typecheck/lint/format/build clean, backup restore verified.
 
-**Delivered**
+## Delivered increments
 
-- Next.js 16 / TS strict / Tailwind v4 / ESLint / Prettier / env validation / structured logger / typed app errors.
-- Docker Compose Postgres 17 (port 5433) with dev + test databases; Prisma 7 migrations.
-- Design tokens with tested WCAG contrast; primitives; responsive app shell (collapsible sidebar, mobile drawer, organization switcher, branch selector, user menu).
-- Better Auth: register, sign in, sign out, forgot/reset password (console email transport).
-- Schema: users/sessions/accounts/verifications, organizations, branches, organization_memberships, branch_assignments, audit_logs, with composite FKs and CHECK constraints.
-- Server-side authorization: permission matrix for 7 roles, `OrganizationContext`, branch scope, guards, platform-admin guard.
-- Onboarding (organization + first branch), organization profile, branch list/create/edit/deactivate/reactivate, read-only team page, dashboard with real counts and audit activity.
-- Audit events for organization and branch changes and branch assignment changes.
-- Demo seed: 2 organizations (India, UK), 5 branches, 7 users including a multi-organization user and branch-restricted staff.
-- Tests at the end of increment 1: 34 unit, 30 integration (real Postgres), 3 Playwright E2E.
+1. Foundation + tenant core (users, orgs, branches, memberships, assignments, audit, isolation tests).
+2. Invitations, team access management, audit log viewer.
+3. Members, plans, memberships, billing, check-in (backend, then UI).
+4. CRM, workforce, scheduling, shared metrics dashboard.
+5. Equipment, maintenance, inventory, purchasing, POS, expenses.
+6. Jobs, notifications, webhooks, reports, imports/exports, settings, SaaS plans.
+7. Member documents, platform administration, marketing site, hardening, CI, docs.
 
-**Exit-criteria evidence:** see "Verification" in README. Tenant isolation and branch
-restrictions are covered by `tests/integration/tenant-isolation.test.ts` and the E2E
-cross-tenant test.
+## Known limitations (deliberate scope boundaries)
 
-## Increment 2 (2026-10-17): invitations, team management, audit log ✅
+- **Simulated integrations**: payments use a sandbox provider; email uses a console transport. No SMS/WhatsApp.
+- **No recurring auto-billing** (saved cards/mandates) and no revenue recognition over membership periods.
+- **No member self-service portal**, workout tracking, payroll, hardware access control or AI assistant
+  (spec §4.14 future expansion).
+- **FitGrid's own SaaS billing** isn't automated; plans and subscriptions are managed by platform admins.
+- Custom roles (ADR 0004), RLS (ADR 0003), MFA, CSP nonces and DNS-pinned webhook SSRF protection are
+  not implemented (see SECURITY.md).
+- Equipment depreciation/valuation and advanced franchise analytics are not implemented.
+- Trial expiry isn't enforced automatically (status changes are manual by platform admins).
 
-**Delivered**
+## Suggested next steps
 
-- `invitations` + `invitation_branches` (composite FKs, hashed tokens, partial unique index, CHECKs). See [ADR 0005](decisions/0005-invitations-and-team-access-rules.md).
-- Invite flow: `/app/organization/team/invite` → link shown once and sent via the console transport → public `/invite/[token]` → sign up or sign in (email pre-filled, safe `?next=` redirect) → accept → membership with exactly the invited access.
-- Pending invitations list with "New link" (token rotation) and "Cancel".
-- Member page: change role and branch access, suspend/reactivate, remove. Guardrails: owners can't be modified, nobody can change themselves, only owners grant or modify administrators.
-- Audit log at `/app/settings/audit-logs` (paginated, organization timezone) and a "Settings" nav section; 8 new audit actions.
-- Tests: 35 unit, 56 integration, 5 Playwright E2E, including invite, accept, branch restriction, suspension, reuse of a used link, and a wrong account trying to accept.
-
-**Milestone 2 exit criteria:** users in separate organizations cannot access each other's
-data (integration + E2E), and branch restrictions are verified by tests, including access
-granted through invitations and revoked through suspension.
-
-## Next increment (proposed): Milestone 3, part 1: members
-
-1. Schema: `members` (organization-owned, member number unique per organization, lifecycle status, home branch via composite FK, optional cross-branch access), `member_contacts` / emergency contact, `member_notes`.
-2. Cross-branch member access policy (spec §3 rule 8): an organization setting plus a per-plan rule later. Decide and record in an ADR first.
-3. Member directory: server-side search (name/phone/member ID), allow-listed filters and sort, pagination; introduce the data-table component.
-4. Create/edit member profile with duplicate detection (phone/email within the organization).
-5. Permissions `members.read/create/update` enforced with branch scope; isolation tests for members (cross-tenant, unassigned branch).
-6. Audit events and realistic demo members.
-
-Part 2 (next after that): membership plans with branch eligibility, purchased memberships and lifecycle/history.
-
-## Deferred / backlog
-
-- Branch opening hours and local operational settings (spec §4.2).
-- Organization branding (logo, colours) and SaaS subscription (`OrganizationSubscription`).
-- Platform administration routes (`/platform/*`).
-- Marketing pages beyond `/` (features, pricing, solutions, legal).
-- Real email provider and required email verification.
-- Content-Security-Policy; rate-limit storage for multi-instance deployment.
-- PostgreSQL row-level security as defence in depth (ADR 0003).
-- Custom roles stored in the database (ADR 0004).
-- Components: data table, combobox, date picker, toasts, confirm dialog, charts.
-- CI pipeline (GitHub Actions running `npm run check` + E2E).
+1. Real email provider (Resend/Postmark) + required email verification.
+2. Live payment gateway (Razorpay for India, Stripe elsewhere) behind the `PaymentProvider` interface.
+3. Member self-service portal (bookings, renewals, receipts) using a separate member identity.
+4. Recurring billing for monthly plans; automated trial/subscription billing for organizations.
+5. RLS as defence in depth; CSP nonces; MFA for owners and platform admins.
 
 ## Risks & assumptions
 
-| Item                                                    | Note                                                                                         |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Prisma 7 / Next 16 / Zod 4 / Vitest 5 are recent majors | Pinned via lockfile; watch upgrade notes                                                     |
-| ICU time-zone aliases                                   | Node 24 lists `Asia/Calcutta`, not `Asia/Kolkata`; pickers merge in market defaults (tested) |
-| Port 5432 is used by another local project              | FitGrid's Postgres runs on **5433**                                                          |
-| Supported markets are a curated list of 10              | Adding a market is a product decision (tax, payments)                                        |
-| Email is console-only                                   | Reset links appear in server logs; not acceptable for production                             |
-| No git commits yet                                      | Repository initialised; the first commit is left to the owner                                |
+| Item                                                         | Note                                                            |
+| ------------------------------------------------------------ | --------------------------------------------------------------- |
+| Recent framework majors (Next 16, Prisma 7, Zod 4, Vitest 5) | Pinned via lockfile; watch upgrade notes                        |
+| ICU time-zone aliases                                        | Pickers merge market defaults (Node lists `Asia/Calcutta`)      |
+| Rate limiting trusts `x-forwarded-for`                       | Deploy behind a proxy that overwrites it                        |
+| Documents in Postgres                                        | Fine for waivers (≤ 5 MB); move to object storage at scale      |
+| Local Postgres on port 5433                                  | 5432 is used by another local project                           |
+| Prisma blocks `migrate reset` from AI agents                 | Use additive migrations; reset only with explicit human consent |

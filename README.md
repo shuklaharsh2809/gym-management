@@ -2,90 +2,91 @@
 
 Multi-tenant gym and fitness-business management SaaS. _Every location. One connected business._
 
+FitGrid covers members and memberships, billing and payments, front-desk check-in, leads, staff,
+classes and personal training, equipment maintenance, inventory and point of sale, reports,
+automation and platform administration, for single gyms and multi-branch chains.
+
 - **Product baseline:** [`fitgrid-product-spec-and-build-prompt.md`](fitgrid-product-spec-and-build-prompt.md)
-- **Status & next steps:** [`docs/ROADMAP.md`](docs/ROADMAP.md)
-- Architecture · Security · Design system · Decisions: [`docs/`](docs/)
+- **Status, gaps & risks:** [`docs/ROADMAP.md`](docs/ROADMAP.md)
+- **Demo script & case study:** [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md)
+- [Architecture](docs/ARCHITECTURE.md) · [Security](docs/SECURITY.md) · [Design system](docs/DESIGN_SYSTEM.md) · [Operations](docs/OPERATIONS.md) · [Decisions](docs/decisions/)
 
-Current scope: foundation, design system, authentication, organizations, branches, team
-invitations and access management, audit log, and tested tenant isolation. Members,
-memberships, billing and check-in are not built yet.
+## Stack
 
-## Requirements
-
-- Node.js 24 (`nvm use`) and npm
-- Docker (for local PostgreSQL)
+Next.js 16 (App Router) · React 19 · TypeScript (strict) · Tailwind CSS v4 + Radix · PostgreSQL 17 ·
+Prisma 7 · Better Auth · Zod 4 · Recharts · Vitest · Playwright + axe.
 
 ## Setup
+
+Requirements: Node.js 24 (`nvm use`), npm, Docker.
 
 ```bash
 nvm use
 npm install                 # also generates the Prisma client
-cp .env.example .env        # then set BETTER_AUTH_SECRET: openssl rand -base64 32
+cp .env.example .env        # then fill in the three secrets (openssl rand -base64 32)
 npm run db:up               # Postgres 17 on localhost:5433 (creates fitgrid + fitgrid_test)
 npm run db:migrate          # apply migrations to the dev database
-npm run db:seed             # optional demo data
+npm run db:seed             # fictional demo data (refuses in production)
 npm run dev                 # http://localhost:3000
+npm run jobs:work           # optional: background jobs (reminders, emails, webhooks)
 ```
 
 ### Demo accounts (seeded, fictional)
 
 Password for all: `FitGrid-demo-2026`
 
-| Email                          | Organization(s)                    | Role / access                                   |
-| ------------------------------ | ---------------------------------- | ----------------------------------------------- |
-| owner.northside@example.com    | Northside Fitness (Demo), India    | Owner, all branches                             |
-| manager.andheri@example.com    | Northside                          | Branch manager, Andheri West only               |
-| frontdesk.bandra@example.com   | Northside                          | Receptionist, Bandra only                       |
-| accounts.northside@example.com | Northside                          | Accountant, all branches                        |
-| owner.harbour@example.com      | Harbour Strength Studio (Demo), UK | Owner                                           |
-| trainer.shoreditch@example.com | Harbour                            | Trainer, Shoreditch only                        |
-| alex.consultant@example.com    | **Both**                           | Admin at Harbour, trainer at Northside (Bandra) |
+| Email                          | Organization(s)                             | Role / access                          |
+| ------------------------------ | ------------------------------------------- | -------------------------------------- |
+| owner.northside@example.com    | Northside Fitness (Demo), India, 3 branches | Owner                                  |
+| manager.andheri@example.com    | Northside                                   | Branch manager, Andheri West           |
+| frontdesk.bandra@example.com   | Northside                                   | Receptionist, Bandra                   |
+| accounts.northside@example.com | Northside                                   | Accountant, all branches               |
+| owner.harbour@example.com      | Harbour Strength Studio (Demo), UK          | Owner                                  |
+| trainer.shoreditch@example.com | Harbour                                     | Trainer, Shoreditch                    |
+| alex.consultant@example.com    | **Both**                                    | Admin at Harbour, trainer at Northside |
+| platform.admin@example.com     | none                                        | FitGrid platform administrator         |
 
-Demo organizations are flagged `is_demo` and labelled "Demo data" in the UI.
+Demo data includes plans, ~60 members with memberships in every state, invoices and payments,
+30 days of check-ins, classes and bookings, staff and shifts, leads, equipment with maintenance,
+inventory with a purchase order, expenses and notifications. Demo organizations are labelled
+"Demo data" in the UI.
 
 ## Environment variables
 
-| Variable             | Purpose                                                                                              |
-| -------------------- | ---------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`       | PostgreSQL connection for the app                                                                    |
-| `TEST_DATABASE_URL`  | Disposable database for integration/E2E tests (**erased by tests**; must differ from `DATABASE_URL`) |
-| `BETTER_AUTH_SECRET` | ≥ 32 random characters for signing sessions                                                          |
-| `BETTER_AUTH_URL`    | Public base URL of the app                                                                           |
-| `EMAIL_TRANSPORT`    | `console` (only option): emails are printed to the server log, not sent                              |
-
-Variables are validated at startup by `src/lib/env.ts`.
+| Variable                          | Purpose                                                                              |
+| --------------------------------- | ------------------------------------------------------------------------------------ |
+| `DATABASE_URL`                    | PostgreSQL connection                                                                |
+| `TEST_DATABASE_URL`               | Disposable database for tests (**erased by tests**; must differ from `DATABASE_URL`) |
+| `BETTER_AUTH_SECRET`              | ≥ 32 random characters; signs sessions                                               |
+| `BETTER_AUTH_URL`                 | Public base URL (auth, email links, checkout links)                                  |
+| `PAYMENTS_SANDBOX_WEBHOOK_SECRET` | Signs/verifies sandbox payment webhooks                                              |
+| `CRON_SECRET`                     | Bearer token for `/api/cron/daily` and `/api/jobs/run`                               |
+| `EMAIL_TRANSPORT`                 | `console` (only option): emails go to the server log                                 |
 
 ## Scripts
 
-| Command                                                  | What it does                                                                                                               |
-| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `npm run dev` / `build` / `start`                        | Next.js                                                                                                                    |
-| `npm run typecheck` · `lint` · `format` · `format:check` | Static checks                                                                                                              |
-| `npm test`                                               | Unit + integration tests (needs Postgres running)                                                                          |
-| `npm run test:unit` · `test:integration`                 | One project only                                                                                                           |
-| `npm run test:e2e`                                       | Playwright: builds the app and runs it on :3100 against `TEST_DATABASE_URL`. First time: `npx playwright install chromium` |
-| `npm run check`                                          | typecheck + lint + format check + unit/integration tests                                                                   |
-| `npm run db:migrate`                                     | Create/apply migrations (dev)                                                                                              |
-| `npm run db:deploy`                                      | Apply migrations (CI/production)                                                                                           |
-| `npm run db:seed`                                        | Seed demo data (idempotent; refuses in production)                                                                         |
-| `npm run db:reset`                                       | **Drops** the dev database and re-applies migrations + seed                                                                |
+| Command                                                     | What it does                                                                                                                |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev` / `build` / `start`                           | Next.js                                                                                                                     |
+| `npm run check`                                             | typecheck + lint + format check + unit/integration tests                                                                    |
+| `npm test` · `test:unit` · `test:integration`               | Vitest (integration needs Postgres)                                                                                         |
+| `npm run test:e2e`                                          | Playwright (builds and runs on :3100 against the test DB, includes axe scans). First run: `npx playwright install chromium` |
+| `npm run db:migrate` / `db:deploy` / `db:seed` / `db:reset` | Prisma migrations and demo data (`db:reset` drops the dev DB)                                                               |
+| `npm run jobs:work`                                         | Local background job worker                                                                                                 |
+| `scripts/verify-backup.sh`                                  | Backup → restore → row-count comparison drill                                                                               |
 
-## Emails in development
+## Simulated integrations
 
-There is no real email delivery. Emails are written to the server log as
-`email.console_transport` lines in the `npm run dev` output:
+Nothing here moves real money or sends real messages:
 
-- **Password reset:** request one at `/forgot-password`, then copy the link from the log.
-- **Team invitations:** the link is also shown once on screen after creating an invitation
-  (Team → Invite member), with a copy button.
+- **Payments**: online checkout uses a **sandbox** provider (`/sandbox-pay/...`) that sends signed
+  webhooks to FitGrid. Cash, card, UPI and bank-transfer payments are recorded manually by staff.
+- **Email**: printed to the server log (`email.console_transport`) and recorded in the email log.
+  Password reset and invitation links are also shown in the UI or log for local use.
 
-## Verification
+## Verification (2026-10-17)
 
-Results for increment 2 (2026-10-17):
-
-- `npm run typecheck`: pass
-- `npm run lint`: pass, 0 warnings
-- `npm run format:check`: pass
-- `npm test`: 91 tests pass (35 unit, 56 integration)
-- `npm run test:e2e`: 5 tests pass
-- `npm run build`: pass (run as part of E2E)
+- `npm run check`: typecheck, ESLint (0 warnings), Prettier, **199 tests** (63 unit, 136 integration): pass
+- `npm run test:e2e`: **10 tests** including the specification's full vertical slice and axe accessibility scans: pass
+- `npm run build`: pass
+- `scripts/verify-backup.sh`: 58 tables / 1,589 rows restored and matched
