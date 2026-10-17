@@ -632,3 +632,239 @@ export async function seedTeamAndSchedule(
   );
   return true;
 }
+
+/** Suppliers, equipment with maintenance, products/stock, a purchase order, POS sales and expenses. */
+export async function seedFacilities(
+  db: PrismaClient,
+  organizationId: string,
+  actorUserId: string,
+) {
+  if ((await db.supplier.count({ where: { organizationId } })) > 0) return false;
+  const org = await db.organization.findUniqueOrThrow({
+    where: { id: organizationId },
+    include: { branches: { where: { status: "ACTIVE" }, orderBy: { code: "asc" } } },
+  });
+  const inr = org.currency === "INR";
+  const money = (inrMinor: number) => (inr ? inrMinor : Math.round(inrMinor / 100));
+  const today = todayIn(org.timezone);
+  const tax = inr ? 1800 : 2000;
+  let eq = 0;
+  let po = 0;
+
+  await db.$transaction(
+    async (tx) => {
+      const fitSupply = await tx.supplier.create({
+        data: {
+          organizationId,
+          name: "ProFit Equipment Co.",
+          contactName: "Rakesh",
+          phone: "+912200000000",
+        },
+      });
+      const nutrition = await tx.supplier.create({
+        data: { organizationId, name: "NutriWorld Distributors", contactName: "Anita" },
+      });
+
+      const kit = [
+        { name: "Treadmill", category: "Cardio", brand: "Technogym", cost: 45000000 },
+        { name: "Spin bike", category: "Cardio", brand: "Keiser", cost: 12000000 },
+        { name: "Cable crossover", category: "Strength", brand: "Life Fitness", cost: 30000000 },
+        { name: "Power rack", category: "Strength", brand: "Rogue", cost: 18000000 },
+      ];
+      for (const branch of org.branches) {
+        for (const [i, k] of kit.entries()) {
+          eq++;
+          const equipment = await tx.equipment.create({
+            data: {
+              organizationId,
+              branchId: branch.id,
+              assetTag: `EQ-${String(eq).padStart(6, "0")}`,
+              name: `${k.name} ${i + 1}`,
+              category: k.category,
+              brand: k.brand,
+              serialNumber: `SN-${branch.code}-${i}`,
+              purchaseDate: toDbDate(addDays(today, -400 - i * 30)),
+              costMinor: money(k.cost),
+              currency: org.currency,
+              supplierId: fitSupply.id,
+              warrantyUntil: toDbDate(addDays(today, 300 - i * 200)),
+              status: eq % 7 === 0 ? "OUT_OF_SERVICE" : "ACTIVE",
+            },
+          });
+          await tx.maintenanceSchedule.create({
+            data: {
+              organizationId,
+              equipmentId: equipment.id,
+              title: "Monthly service",
+              intervalDays: 30,
+              nextDueOn: toDbDate(addDays(today, (eq % 5) * 6 - 6)),
+            },
+          });
+          if (eq % 7 === 0) {
+            await tx.maintenanceWorkOrder.create({
+              data: {
+                organizationId,
+                equipmentId: equipment.id,
+                branchId: branch.id,
+                type: "CORRECTIVE",
+                priority: "HIGH",
+                title: "Motor noise under load",
+                takesOutOfService: true,
+                reportedById: actorUserId,
+              },
+            });
+          }
+        }
+      }
+
+      const catalogue = [
+        {
+          sku: "WHEY-1KG",
+          name: "Whey protein 1kg",
+          price: 250000,
+          cost: 160000,
+          category: "Supplements",
+        },
+        { sku: "BAR-PRO", name: "Protein bar", price: 12000, cost: 6000, category: "Snacks" },
+        { sku: "WATER-1L", name: "Water 1L", price: 4000, cost: 1500, category: "Drinks" },
+        {
+          sku: "SHAKER",
+          name: "Shaker bottle",
+          price: 45000,
+          cost: 18000,
+          category: "Accessories",
+        },
+        { sku: "TOWEL", name: "Gym towel", price: 35000, cost: 15000, category: "Accessories" },
+      ];
+      const products = [];
+      for (const c of catalogue) {
+        products.push(
+          await tx.product.create({
+            data: {
+              organizationId,
+              sku: c.sku,
+              name: c.name,
+              category: c.category,
+              priceMinor: money(c.price),
+              costMinor: money(c.cost),
+              currency: org.currency,
+              taxRateBps: tax,
+              taxInclusive: true,
+              lowStockThreshold: 5,
+            },
+          }),
+        );
+      }
+      for (const branch of org.branches) {
+        po++;
+        const lines = products.map((p, i) => ({
+          productId: p.id,
+          quantity: 10 + i * 6,
+          unitCostMinor: p.costMinor,
+        }));
+        const total = lines.reduce((a, l) => a + l.quantity * l.unitCostMinor, 0);
+        const order = await tx.purchaseOrder.create({
+          data: {
+            organizationId,
+            number: `PO-${String(po).padStart(6, "0")}`,
+            supplierId: nutrition.id,
+            branchId: branch.id,
+            status: "RECEIVED",
+            currency: org.currency,
+            totalCostMinor: total,
+            orderedAt: new Date(Date.now() - 12 * 86_400_000),
+            receivedAt: new Date(Date.now() - 10 * 86_400_000),
+            createdById: actorUserId,
+          },
+        });
+        await tx.purchaseOrderLine.createMany({
+          data: lines.map((l) => ({ ...l, organizationId, purchaseOrderId: order.id })),
+        });
+        for (const l of lines) {
+          // Receive, then sell a little so stock levels vary; one item ends below its alert level.
+          const sold =
+            l.productId === products[0]!.id ? l.quantity - 3 : Math.floor(l.quantity / 3);
+          await tx.productStock.create({
+            data: {
+              organizationId,
+              productId: l.productId,
+              branchId: branch.id,
+              quantity: l.quantity - sold,
+            },
+          });
+          await tx.stockMovement.create({
+            data: {
+              organizationId,
+              productId: l.productId,
+              branchId: branch.id,
+              type: "RECEIPT",
+              quantity: l.quantity,
+              purchaseOrderId: order.id,
+              reason: `Received ${order.number}`,
+              actorId: actorUserId,
+              createdAt: new Date(Date.now() - 10 * 86_400_000),
+            },
+          });
+          await tx.stockMovement.create({
+            data: {
+              organizationId,
+              productId: l.productId,
+              branchId: branch.id,
+              type: "ADJUSTMENT",
+              quantity: -sold,
+              reason: "Demo: sales before FitGrid",
+              actorId: actorUserId,
+            },
+          });
+        }
+        await tx.expense.create({
+          data: {
+            organizationId,
+            branchId: branch.id,
+            category: "SUPPLIES",
+            description: `Purchase order ${order.number}`,
+            amountMinor: total,
+            currency: org.currency,
+            incurredOn: toDbDate(addDays(today, -10)),
+            paymentMethod: "BANK_TRANSFER",
+            supplierId: nutrition.id,
+            purchaseOrderId: order.id,
+            createdById: actorUserId,
+          },
+        });
+        for (const [category, description, amount, day] of [
+          ["RENT", "Monthly rent", 35000000, 1],
+          ["UTILITIES", "Electricity", 4200000, 5],
+          ["UTILITIES", "Water", 600000, 5],
+          ["MARKETING", "Social media ads", 1500000, 8],
+        ] as const) {
+          await tx.expense.create({
+            data: {
+              organizationId,
+              branchId: branch.id,
+              category,
+              description,
+              amountMinor: money(amount),
+              currency: org.currency,
+              incurredOn: toDbDate(`${today.slice(0, 8)}${String(day).padStart(2, "0")}`),
+              paymentMethod: "BANK_TRANSFER",
+              createdById: actorUserId,
+            },
+          });
+        }
+      }
+      for (const [key, value] of [
+        ["equipment", eq],
+        ["purchase_order", po],
+      ] as const) {
+        await tx.organizationSequence.upsert({
+          where: { organizationId_key: { organizationId, key } },
+          create: { organizationId, key, nextValue: value + 1 },
+          update: { nextValue: value + 1 },
+        });
+      }
+    },
+    { timeout: 120_000 },
+  );
+  return true;
+}
