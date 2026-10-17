@@ -79,7 +79,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
                 ),
               }))}
             />
-            <UserMenu name={user.name} email={user.email} roleLabel={ROLE_LABELS[ctx.role]} />
+            <UserMenu
+              name={user.name}
+              email={user.email}
+              roleLabel={ROLE_LABELS[ctx.role]}
+              isPlatformAdmin={user.platformRole === "ADMIN"}
+            />
           </div>
         </header>
         <div className="border-b border-border bg-surface px-4 py-2 sm:hidden">
