@@ -10,6 +10,7 @@ import type { Database, DbClient } from "@/server/database/client";
 import type { OrganizationContext } from "@/server/authorization/context";
 import { requireBranchAccess, requirePermission } from "@/server/authorization/guards";
 import type { LeadInput } from "./schemas";
+import { emitEvent } from "@/modules/integrations/webhooks";
 
 export function leadScopeWhere(ctx: OrganizationContext): Prisma.LeadWhereInput {
   return ctx.branchScope.kind === "all"
@@ -387,6 +388,10 @@ export async function convertLead(
       entityType: "lead",
       entityId: lead.id,
       metadata: { memberId: created.id },
+    });
+    await emitEvent(tx, ctx.organizationId, "lead.converted", {
+      leadId: lead.id,
+      memberId: created.id,
     });
     return created;
   });
