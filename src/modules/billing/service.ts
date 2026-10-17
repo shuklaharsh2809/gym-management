@@ -7,7 +7,7 @@ import { pageMeta } from "@/lib/pagination";
 import { uuidSchema } from "@/lib/validation";
 import { recordAudit } from "@/modules/audit/audit";
 import { memberScopeWhere } from "@/modules/members/scope";
-import { createMembershipInTx } from "@/modules/memberships/service";
+import { createMembershipInTx, recordRenewalLink } from "@/modules/memberships/service";
 import { nextNumber } from "@/modules/sequences/sequences";
 import type { Database, DbClient, TransactionClient } from "@/server/database/client";
 import type { OrganizationContext } from "@/server/authorization/context";
@@ -246,6 +246,8 @@ export async function sellMembership(
         startDate: input.startDate,
         previousMembershipId: input.previousMembershipId,
       });
+      if (input.previousMembershipId)
+        await recordRenewalLink(tx, ctx, input.previousMembershipId, membership.id);
       if (input.discountMinor > membership.priceMinor) {
         throw new ValidationError("Please correct the highlighted fields.", {
           discountMinor: ["The discount can't be more than the plan price"],
