@@ -8,7 +8,7 @@ const { db } = await import("@/server/database/client");
 
 beforeEach(async () => {
   await db.$executeRawUnsafe(
-    `TRUNCATE TABLE audit_logs, branch_assignments, organization_memberships, branches,
+    `TRUNCATE TABLE audit_logs, invitation_branches, invitations, branch_assignments, organization_memberships, branches,
        organizations, verifications, accounts, sessions, users RESTART IDENTITY CASCADE`,
   );
 });

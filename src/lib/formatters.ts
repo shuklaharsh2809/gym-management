@@ -19,6 +19,14 @@ const AUDIT_LABELS: Record<string, string> = {
   "branch.reactivated": "Reactivated a branch",
   "team.branch_assigned": "Assigned a team member to a branch",
   "team.branch_unassigned": "Removed a team member's branch access",
+  "team.member_updated": "Changed a team member's access",
+  "team.member_suspended": "Suspended a team member",
+  "team.member_reactivated": "Reactivated a team member",
+  "team.member_revoked": "Removed a team member",
+  "invitation.created": "Invited a team member",
+  "invitation.resent": "Sent a new invitation link",
+  "invitation.revoked": "Cancelled an invitation",
+  "invitation.accepted": "Accepted an invitation",
 };
 
 export function describeAuditAction(action: string) {

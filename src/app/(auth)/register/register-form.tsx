@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 
-export function RegisterForm() {
+export function RegisterForm({ next, email }: { next: string; email: string }) {
   const router = useRouter();
   const { pending, error, run } = useAuthForm();
 
@@ -25,7 +25,7 @@ export function RegisterForm() {
       }),
     );
     if (ok) {
-      router.replace("/onboarding");
+      router.replace(next);
       router.refresh();
     }
   }
@@ -34,7 +34,11 @@ export function RegisterForm() {
     <>
       <AuthHeading
         title="Create your account"
-        description="Start with your own login. You'll set up your organization next."
+        description={
+          next === "/onboarding"
+            ? "Start with your own login. You'll set up your organization next."
+            : "Create your login to accept the invitation."
+        }
       />
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         {error && <Alert tone="danger">{error}</Alert>}
@@ -42,7 +46,7 @@ export function RegisterForm() {
           <Input name="name" autoComplete="name" minLength={2} maxLength={120} />
         </FormField>
         <FormField id="email" label="Work email" required>
-          <Input name="email" type="email" autoComplete="email" />
+          <Input name="email" type="email" autoComplete="email" defaultValue={email} />
         </FormField>
         <FormField id="password" label="Password" hint="At least 10 characters." required>
           <Input
@@ -59,7 +63,14 @@ export function RegisterForm() {
       </form>
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-primary hover:underline">
+        <Link
+          href={
+            next === "/onboarding"
+              ? "/login"
+              : `/login?next=${encodeURIComponent(next)}&email=${encodeURIComponent(email)}`
+          }
+          className="font-medium text-primary hover:underline"
+        >
           Sign in
         </Link>
       </p>

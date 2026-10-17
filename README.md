@@ -6,8 +6,9 @@ Multi-tenant gym and fitness-business management SaaS. _Every location. One conn
 - **Status & next steps:** [`docs/ROADMAP.md`](docs/ROADMAP.md)
 - Architecture · Security · Design system · Decisions: [`docs/`](docs/)
 
-Current scope: foundation, design system, authentication, organizations, branches and
-tested tenant isolation. Members, memberships, billing and check-in are not built yet.
+Current scope: foundation, design system, authentication, organizations, branches, team
+invitations and access management, audit log, and tested tenant isolation. Members,
+memberships, billing and check-in are not built yet.
 
 ## Requirements
 
@@ -69,18 +70,22 @@ Variables are validated at startup by `src/lib/env.ts`.
 | `npm run db:seed`                                        | Seed demo data (idempotent; refuses in production)                                                                         |
 | `npm run db:reset`                                       | **Drops** the dev database and re-applies migrations + seed                                                                |
 
-## Password reset in development
+## Emails in development
 
-There is no real email delivery. Request a reset at `/forgot-password`, then copy the
-link from the `email.console_transport` log line in the `npm run dev` output.
+There is no real email delivery. Emails are written to the server log as
+`email.console_transport` lines in the `npm run dev` output:
+
+- **Password reset:** request one at `/forgot-password`, then copy the link from the log.
+- **Team invitations:** the link is also shown once on screen after creating an invitation
+  (Team → Invite member), with a copy button.
 
 ## Verification
 
-Results for increment 1 (2026-10-17):
+Results for increment 2 (2026-10-17):
 
 - `npm run typecheck`: pass
 - `npm run lint`: pass, 0 warnings
 - `npm run format:check`: pass
-- `npm test`: 64 tests pass (34 unit, 30 integration)
-- `npm run test:e2e`: 3 tests pass
-- `npm run build`: pass
+- `npm test`: 91 tests pass (35 unit, 56 integration)
+- `npm run test:e2e`: 5 tests pass
+- `npm run build`: pass (run as part of E2E)

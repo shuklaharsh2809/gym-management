@@ -10,7 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 
-export function LoginForm({ passwordReset }: { passwordReset: boolean }) {
+interface LoginFormProps {
+  passwordReset: boolean;
+  next: string;
+  email: string;
+}
+
+export function LoginForm({ passwordReset, next, email }: LoginFormProps) {
   const router = useRouter();
   const { pending, error, run } = useAuthForm();
 
@@ -24,7 +30,7 @@ export function LoginForm({ passwordReset }: { passwordReset: boolean }) {
       }),
     );
     if (ok) {
-      router.replace("/app");
+      router.replace(next);
       router.refresh();
     }
   }
@@ -38,7 +44,7 @@ export function LoginForm({ passwordReset }: { passwordReset: boolean }) {
         )}
         {error && <Alert tone="danger">{error}</Alert>}
         <FormField id="email" label="Email" required>
-          <Input name="email" type="email" autoComplete="email" />
+          <Input name="email" type="email" autoComplete="email" defaultValue={email} />
         </FormField>
         <FormField id="password" label="Password" required>
           <Input name="password" type="password" autoComplete="current-password" />
@@ -54,7 +60,14 @@ export function LoginForm({ passwordReset }: { passwordReset: boolean }) {
       </form>
       <p className="mt-6 text-center text-sm text-muted-foreground">
         New to FitGrid?{" "}
-        <Link href="/register" className="font-medium text-primary hover:underline">
+        <Link
+          href={
+            next === "/app"
+              ? "/register"
+              : `/register?next=${encodeURIComponent(next)}&email=${encodeURIComponent(email)}`
+          }
+          className="font-medium text-primary hover:underline"
+        >
           Create an account
         </Link>
       </p>

@@ -84,3 +84,13 @@ export const ROLE_LABELS: Record<OrganizationRole, string> = {
   ACCOUNTANT: "Accountant",
   EQUIPMENT_TECHNICIAN: "Equipment technician",
 };
+
+export const ROLE_DESCRIPTIONS: Record<OrganizationRole, string> = {
+  OWNER: "Full control of the organization.",
+  ADMIN: "Manages settings, branches and team across all branches.",
+  BRANCH_MANAGER: "Runs day-to-day operations, including refunds and financial reports.",
+  RECEPTIONIST: "Front desk: members, memberships and collecting payments.",
+  TRAINER: "Views member details for training.",
+  ACCOUNTANT: "Payments, refunds, financial reports and the audit log.",
+  EQUIPMENT_TECHNICIAN: "Equipment maintenance.",
+};

@@ -31,10 +31,12 @@ model User {
   createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  sessions    Session[]
-  accounts    Account[]
-  memberships OrganizationMembership[]
-  auditLogs   AuditLog[]
+  sessions            Session[]
+  accounts            Account[]
+  memberships         OrganizationMembership[]
+  auditLogs           AuditLog[]
+  invitationsSent     Invitation[]             @relation("InvitationInvitedBy")
+  invitationsAccepted Invitation[]             @relation("InvitationAcceptedBy")
 
   @@map("users")
 }
@@ -139,10 +141,12 @@ model Organization {
   createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  branches          Branch[]
-  memberships       OrganizationMembership[]
-  branchAssignments BranchAssignment[]
-  auditLogs         AuditLog[]
+  branches           Branch[]
+  memberships        OrganizationMembership[]
+  branchAssignments  BranchAssignment[]
+  auditLogs          AuditLog[]
+  invitations        Invitation[]
+  invitationBranches InvitationBranch[]
 
   @@map("organizations")
 }
@@ -166,8 +170,9 @@ model Branch {
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  assignments  BranchAssignment[]
+  organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assignments        BranchAssignment[]
+  invitationBranches InvitationBranch[]
 
   // Target for composite foreign keys from branch-owned rows.
   @@unique([id, organizationId])
@@ -212,6 +217,59 @@ model BranchAssignment {
   @@unique([membershipId, branchId])
   @@index([organizationId, branchId])
   @@map("branch_assignments")
+}
+
+// ---------------------------------------------------------------------------
+// Invitations
+// ---------------------------------------------------------------------------
+
+/// EXPIRED is derived from expires_at; it is not stored.
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
+/// Invitation to join an organization. Only a SHA-256 hash of the token is stored.
+model Invitation {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  /// Normalized to lower case.
+  email          String
+  role           OrganizationRole
+  branchScope    BranchAccessScope @map("branch_scope")
+  tokenHash      String            @unique @map("token_hash")
+  status         InvitationStatus  @default(PENDING)
+  expiresAt      DateTime          @map("expires_at") @db.Timestamptz(3)
+  invitedById    String?           @map("invited_by_id") @db.Uuid
+  acceptedById   String?           @map("accepted_by_id") @db.Uuid
+  acceptedAt     DateTime?         @map("accepted_at") @db.Timestamptz(3)
+  revokedAt      DateTime?         @map("revoked_at") @db.Timestamptz(3)
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  invitedBy    User?              @relation("InvitationInvitedBy", fields: [invitedById], references: [id], onDelete: SetNull)
+  acceptedBy   User?              @relation("InvitationAcceptedBy", fields: [acceptedById], references: [id], onDelete: SetNull)
+  branches     InvitationBranch[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@map("invitations")
+}
+
+/// Branches granted on acceptance when the invitation's scope is ASSIGNED_BRANCHES.
+model InvitationBranch {
+  invitationId   String @map("invitation_id") @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  branchId       String @map("branch_id") @db.Uuid
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  invitation   Invitation   @relation(fields: [invitationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  branch       Branch       @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@id([invitationId, branchId])
+  @@map("invitation_branches")
 }
 
 // ---------------------------------------------------------------------------
