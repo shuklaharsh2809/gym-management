@@ -336,3 +336,159 @@ export async function branchBreakdown(
     }),
   );
 }
+
+export async function expensesTotal(
+  db: DbClient,
+  ctx: OrganizationContext,
+  scope: MetricScope,
+  period: Period,
+) {
+  requirePermission(ctx, "reports.financial.read");
+  const ids = branchIds(ctx, scope);
+  const rows = await db.expense.groupBy({
+    by: ["category"],
+    where: {
+      organizationId: ctx.organizationId,
+      voidedAt: null,
+      ...(ids ? { branchId: { in: ids } } : {}),
+      incurredOn: { gte: toDbDate(period.from), lte: toDbDate(period.to) },
+    },
+    _sum: { amountMinor: true },
+  });
+  const byCategory = rows.map((r) => ({
+    category: r.category,
+    amountMinor: r._sum.amountMinor ?? 0,
+  }));
+  return { totalMinor: byCategory.reduce((a, r) => a + r.amountMinor, 0), byCategory };
+}
+
+/** Stock valued at cost price. */
+export async function inventoryValuation(
+  db: DbClient,
+  ctx: OrganizationContext,
+  scope: MetricScope,
+) {
+  requirePermission(ctx, "reports.financial.read");
+  const rows = await db.$queryRaw<{ value: bigint | null; units: bigint | null }[]>`
+    SELECT SUM(s.quantity * p.cost_minor) AS value, SUM(s.quantity) AS units
+    FROM product_stock s JOIN products p ON p.id = s.product_id
+    WHERE s.organization_id = ${ctx.organizationId}::uuid${branchSql(ctx, scope, "s.branch_id")}`;
+  return { valueMinor: Number(rows[0]?.value ?? 0), units: Number(rows[0]?.units ?? 0) };
+}
+
+/** Booked places over capacity for classes that started in the period, plus no-shows. */
+export async function classOccupancy(
+  db: DbClient,
+  ctx: OrganizationContext,
+  scope: MetricScope,
+  period: Period,
+) {
+  requirePermission(ctx, "reports.read");
+  const { gte, lt } = bounds(period, scope.timeZone);
+  const rows = await db.$queryRaw<
+    { sessions: bigint; capacity: bigint | null; booked: bigint | null; no_shows: bigint | null }[]
+  >`
+    SELECT COUNT(*) AS sessions, SUM(capacity) AS capacity, SUM(booked) AS booked, SUM(no_shows) AS no_shows
+    FROM (
+      SELECT cs.id, cs.capacity,
+        COUNT(b.id) FILTER (WHERE b.status IN ('BOOKED', 'ATTENDED', 'NO_SHOW')) AS booked,
+        COUNT(b.id) FILTER (WHERE b.status = 'NO_SHOW') AS no_shows
+      FROM class_sessions cs LEFT JOIN bookings b ON b.session_id = cs.id
+      WHERE cs.organization_id = ${ctx.organizationId}::uuid AND cs.status = 'SCHEDULED'
+        AND cs.starts_at >= ${gte} AND cs.starts_at < ${lt}${branchSql(ctx, scope, "cs.branch_id")}
+      GROUP BY cs.id, cs.capacity
+    ) per_session`;
+  const r = rows[0];
+  const capacity = Number(r?.capacity ?? 0);
+  const booked = Number(r?.booked ?? 0);
+  return {
+    sessions: Number(r?.sessions ?? 0),
+    capacity,
+    booked,
+    noShows: Number(r?.no_shows ?? 0),
+    occupancyBps: capacity ? Math.round((booked / capacity) * 10_000) : 0,
+  };
+}
+
+/** Maintenance spend and downtime (hours out of service) for work orders closed in the period. */
+export async function maintenanceSummary(
+  db: DbClient,
+  ctx: OrganizationContext,
+  scope: MetricScope,
+  period: Period,
+) {
+  requirePermission(ctx, "reports.read");
+  const { gte, lt } = bounds(period, scope.timeZone);
+  const rows = await db.$queryRaw<
+    { cost: bigint | null; downtime_hours: number | null; completed: bigint; open: bigint }[]
+  >`
+    SELECT
+      SUM(cost_minor) FILTER (WHERE status = 'COMPLETED' AND completed_at >= ${gte} AND completed_at < ${lt}) AS cost,
+      SUM(EXTRACT(EPOCH FROM (completed_at - opened_at)) / 3600) FILTER (WHERE status = 'COMPLETED' AND takes_out_of_service AND completed_at >= ${gte} AND completed_at < ${lt}) AS downtime_hours,
+      COUNT(*) FILTER (WHERE status = 'COMPLETED' AND completed_at >= ${gte} AND completed_at < ${lt}) AS completed,
+      COUNT(*) FILTER (WHERE status IN ('OPEN', 'IN_PROGRESS')) AS open
+    FROM maintenance_work_orders WHERE organization_id = ${ctx.organizationId}::uuid${branchSql(ctx, scope, "branch_id")}`;
+  const r = rows[0];
+  return {
+    costMinor: Number(r?.cost ?? 0),
+    downtimeHours: Math.round(Number(r?.downtime_hours ?? 0)),
+    completed: Number(r?.completed ?? 0),
+    open: Number(r?.open ?? 0),
+  };
+}
+
+/**
+ * Churn: members whose last time-based membership ended in the period and who have no
+ * membership starting after it. Renewal rate = renewed / (renewed + churned).
+ */
+export async function retention(
+  db: DbClient,
+  ctx: OrganizationContext,
+  scope: MetricScope,
+  period: Period,
+) {
+  requirePermission(ctx, "reports.read");
+  const rows = await db.$queryRaw<{ ended: bigint; renewed: bigint }[]>`
+    SELECT COUNT(*) AS ended,
+      COUNT(*) FILTER (WHERE EXISTS (
+        SELECT 1 FROM gym_memberships n WHERE n.member_id = m.member_id AND n.status <> 'CANCELLED' AND n.start_date > m.end_date - 1 AND n.id <> m.id
+      )) AS renewed
+    FROM gym_memberships m
+    WHERE m.organization_id = ${ctx.organizationId}::uuid AND m.plan_kind = 'TIME_BASED' AND m.status <> 'CANCELLED'
+      AND m.end_date >= ${toDbDate(period.from)} AND m.end_date <= ${toDbDate(period.to)}${branchSql(ctx, scope, "m.branch_id")}`;
+  const ended = Number(rows[0]?.ended ?? 0);
+  const renewed = Number(rows[0]?.renewed ?? 0);
+  return {
+    ended,
+    renewed,
+    churned: ended - renewed,
+    renewalRateBps: ended ? Math.round((renewed / ended) * 10_000) : 0,
+  };
+}
+
+export async function leadsBySource(
+  db: DbClient,
+  ctx: OrganizationContext,
+  scope: MetricScope,
+  period: Period,
+) {
+  requirePermission(ctx, "reports.read");
+  const ids = branchIds(ctx, scope);
+  const rows = await db.lead.groupBy({
+    by: ["source", "stage"],
+    where: {
+      organizationId: ctx.organizationId,
+      ...(ids ? { branchId: { in: ids } } : {}),
+      createdAt: bounds(period, scope.timeZone),
+    },
+    _count: true,
+  });
+  const sources = new Map<string, { total: number; won: number }>();
+  for (const r of rows) {
+    const s = sources.get(r.source) ?? { total: 0, won: 0 };
+    s.total += r._count;
+    if (r.stage === "WON") s.won += r._count;
+    sources.set(r.source, s);
+  }
+  return [...sources.entries()].map(([source, v]) => ({ source, ...v }));
+}
