@@ -1,76 +1,85 @@
-import { Building2, ShieldCheck, Users } from "lucide-react";
-import Link from "next/link";
-import { Logo } from "@/components/shared/logo";
-import { Button } from "@/components/ui/button";
-
-const pillars = [
-  {
-    icon: Building2,
-    title: "Organization-first",
-    body: "Run one studio or many branches from a single, consistent workspace.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Secure by design",
-    body: "Every request is checked against your organization, branch and role on the server.",
-  },
-  {
-    icon: Users,
-    title: "Built for the front desk",
-    body: "Fast, clear workflows for the people who keep your gym running.",
-  },
-];
+import {
+  BarChart3,
+  Building2,
+  CalendarDays,
+  CreditCard,
+  ScanLine,
+  ShieldCheck,
+  Users,
+  Wrench,
+} from "lucide-react";
+import { FeatureGrid, Hero, Section } from "@/components/shared/marketing";
 
 export default function LandingPage() {
   return (
-    <div className="min-h-dvh bg-surface">
-      <header className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Logo />
-        <nav className="flex items-center gap-2" aria-label="Account">
-          <Button asChild variant="ghost">
-            <Link href="/login">Sign in</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/register">Get started</Link>
-          </Button>
-        </nav>
-      </header>
-      <main>
-        <section className="bg-brand text-white">
-          <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
-            <p className="text-sm font-medium tracking-wide text-accent uppercase">
-              Gym &amp; fitness business management
-            </p>
-            <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
-              Every location. One connected business.
-            </h1>
-            <p className="mt-5 max-w-2xl text-lg text-sidebar-foreground">
-              FitGrid brings members, memberships, payments, attendance, staff and equipment
-              together across all of your branches.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Button asChild size="lg">
-                <Link href="/register">Create your organization</Link>
-              </Button>
-              <Button asChild size="lg" variant="ghost" className="text-white hover:bg-brand-hover">
-                <Link href="/login">Sign in</Link>
-              </Button>
-            </div>
-          </div>
-        </section>
-        <section className="mx-auto grid max-w-6xl gap-6 px-4 py-16 sm:grid-cols-3 sm:px-6">
-          {pillars.map(({ icon: Icon, title, body }) => (
-            <div key={title}>
-              <Icon className="size-6 text-primary" aria-hidden />
-              <h2 className="mt-3 font-semibold">{title}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{body}</p>
-            </div>
-          ))}
-        </section>
-      </main>
-      <footer className="border-t border-border py-6 text-center text-sm text-muted-foreground">
-        FitGrid is in early development. Features are being released in stages.
-      </footer>
-    </div>
+    <>
+      <Hero
+        eyebrow="Gym & fitness business management"
+        title="Every location. One connected business."
+        body="FitGrid brings members, memberships, payments, attendance, staff, classes, equipment and inventory together across all of your branches."
+      />
+      <Section
+        title="Built for how gyms actually run"
+        intro="From the front desk to the finance team, everyone works from the same records."
+      >
+        <FeatureGrid
+          items={[
+            {
+              icon: ScanLine,
+              title: "Fast front desk",
+              body: "Find a member by name, phone or QR code and check them in. Eligibility is verified instantly.",
+            },
+            {
+              icon: CreditCard,
+              title: "Memberships & billing",
+              body: "Plans, renewals, freezes, invoices with GST/VAT, partial payments, refunds and online checkout.",
+            },
+            {
+              icon: Building2,
+              title: "Multi-branch",
+              body: "Branch-level access for staff, consolidated reports for owners, transfers with full history.",
+            },
+            {
+              icon: CalendarDays,
+              title: "Classes & PT",
+              body: "Recurring schedules, capacity-safe booking, waitlists and session packs.",
+            },
+            {
+              icon: Wrench,
+              title: "Equipment & stock",
+              body: "Maintenance schedules, work orders, inventory, purchase orders and point of sale.",
+            },
+            {
+              icon: BarChart3,
+              title: "Reports that agree",
+              body: "Every dashboard card and report uses the same metric definitions.",
+            },
+          ]}
+        />
+      </Section>
+      <section className="bg-canvas">
+        <Section title="Secure by design">
+          <FeatureGrid
+            items={[
+              {
+                icon: ShieldCheck,
+                title: "Tenant isolation",
+                body: "Every request is checked against your organization, branch and role on the server, with database constraints as a second line of defence.",
+              },
+              {
+                icon: Users,
+                title: "Least privilege",
+                body: "Receptionists, trainers, accountants and technicians see only what their job needs.",
+              },
+              {
+                icon: BarChart3,
+                title: "Full audit trail",
+                body: "Sales, payments, refunds, access changes and exports are all recorded.",
+              },
+            ]}
+          />
+        </Section>
+      </section>
+    </>
   );
 }

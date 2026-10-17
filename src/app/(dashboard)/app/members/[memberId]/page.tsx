@@ -20,8 +20,13 @@ import { requireOrganizationContext } from "@/server/auth/session";
 import { hasPermission } from "@/server/authorization/guards";
 import { db } from "@/server/database/client";
 import { orNotFound } from "@/server/pages";
+import { listMemberDocuments } from "@/modules/documents/service";
+import { SimpleForm } from "@/components/shared/simple-form";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import {
   addMemberNoteAction,
+  uploadDocumentAction,
   cancelMembershipAction,
   extendMembershipAction,
   freezeMembershipAction,
@@ -80,6 +85,7 @@ export default async function MemberPage({
         })
       : null,
   ]);
+  const documents = await listMemberDocuments(db, ctx, member.id);
   const current = memberships.find((m) =>
     ["active", "grace", "frozen", "scheduled"].includes(m.state),
   );
@@ -351,6 +357,81 @@ export default async function MemberPage({
                     </li>
                   ))}
                 </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Documents</CardTitle>
+            </CardHeader>
+
+            <CardContent className="flex flex-col gap-4">
+              {documents.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No waivers or documents.</p>
+              ) : (
+                <ul className="flex flex-col gap-2 text-sm">
+                  {documents.map((d) => (
+                    <li key={d.id} className="flex items-start justify-between gap-2">
+                      <span>
+                        <a href={`/app/documents/${d.id}`} className="font-medium hover:underline">
+                          {d.title}
+                        </a>
+
+                        <span className="block text-xs text-muted-foreground">
+                          {d.kind.toLowerCase().replace("_", " ")} · {Math.ceil(d.sizeBytes / 1024)}{" "}
+                          KB
+                          {d.signedAt &&
+                            ` · signed ${formatDateTime(d.signedAt, locale, timezone)}`}
+                        </span>
+                      </span>
+
+                      {d.sensitive && <Badge tone="warning">sensitive</Badge>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {hasPermission(ctx, "members.update") && (
+                <SimpleForm
+                  action={uploadDocumentAction.bind(null, member.id)}
+                  submit="Upload"
+                  variant="secondary"
+                >
+                  <Input
+                    name="title"
+                    placeholder="Title, e.g. Liability waiver"
+                    aria-label="Title"
+                  />
+
+                  <Select name="kind" aria-label="Type" defaultValue="WAIVER">
+                    <option value="WAIVER">Waiver</option>
+
+                    <option value="CONSENT">Consent</option>
+
+                    <option value="ID_PROOF">ID proof</option>
+
+                    {member.canSeeSensitive && <option value="MEDICAL">Medical (sensitive)</option>}
+
+                    <option value="OTHER">Other</option>
+                  </Select>
+
+                  <Input name="signedAt" type="date" aria-label="Signed on" />
+
+                  <input
+                    name="file"
+                    type="file"
+                    accept="application/pdf,image/png,image/jpeg,image/webp"
+                    aria-label="File"
+                    className="text-sm"
+                  />
+
+                  {member.canSeeSensitive && (
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" name="sensitive" className="size-4" /> Sensitive
+                    </label>
+                  )}
+                </SimpleForm>
               )}
             </CardContent>
           </Card>

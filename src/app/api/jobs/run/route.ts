@@ -11,3 +11,6 @@ export async function POST(request: Request) {
   if (!isAuthorizedCron(request)) return Response.json({ error: "Unauthorized" }, { status: 401 });
   return Response.json(await runDueJobs(db, JOB_HANDLERS, { limit: 50 }));
 }
+
+/** Vercel Cron issues GET requests with the same bearer token. */
+export const GET = POST;

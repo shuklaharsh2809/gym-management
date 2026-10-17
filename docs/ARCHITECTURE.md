@@ -1,92 +1,100 @@
 # Architecture
 
-FitGrid is a **modular monolith**: one Next.js application and one PostgreSQL database,
-with business logic organized by domain module. See [ADR 0001](decisions/0001-stack-and-modular-monolith.md).
+FitGrid is a **modular monolith**: one Next.js application and one PostgreSQL database, with
+business logic organized by domain module ([ADR 0001](decisions/0001-stack-and-modular-monolith.md)).
 
 ## Layout
 
 ```text
 prisma/
-  schema.prisma          Data model (snake_case tables, UUID keys)
-  migrations/            SQL migrations, including hand-written CHECK constraints
-  seed.ts                Demo data (flagged is_demo)
+  schema.prisma              Data model (UUID keys, snake_case tables, explicit organization ownership)
+  migrations/                SQL migrations incl. hand-written CHECKs, triggers and partial indexes
+  seed.ts, seed-operations.ts  Fictional demo data
 src/
-  app/                   Routes: thin adapters only
-    (marketing)/         Public pages
-    (auth)/              login, register, forgot/reset password
-    onboarding/          Create organization + first branch
-    invite/[token]/      Public invitation accept page
-    (dashboard)/app/     Authenticated organization app (/app/...)
-    api/auth/[...all]/   Better Auth HTTP handler
-  components/
-    ui/                  Primitives (Button, Input, Select, Card, Badge, Alert, DropdownMenu, Sheet…)
-    shared/              Cross-feature patterns (FormField, PageHeader, EmptyState, SubmitButton…)
-    layouts/             App shell (sidebar, topbar, switchers)
-    business/            Domain widgets (LocationFields, AccessFields, BranchStatusBadge)
-  modules/               Domain services: business rules + data access
-    organizations/  branches/  team/  invitations/  audit/
+  app/
+    (marketing)/             Public site: home, features, solutions, pricing, contact, privacy, terms
+    (auth)/                  Sign in, register, password reset
+    onboarding/              Create organization + first branch (starts a trial)
+    invite/[token]/          Accept a team invitation
+    sandbox-pay/[reference]/ Simulated payment-provider checkout
+    (dashboard)/app/…        Organization app (see route list below)
+    platform/…               Platform administration (separate authorization boundary)
+    api/                     auth, health, cron/daily, jobs/run, webhooks/payments/sandbox
+  components/ui|shared|layouts|business
+  modules/                   Domain services — business rules + data access
+    organizations branches team invitations members plans memberships billing attendance
+    crm workforce scheduling equipment inventory documents imports integrations
+    notifications entitlements reporting platform audit sequences
   server/
-    auth/                Better Auth config, session + active-scope helpers (server-only)
-    authorization/       Permissions, context resolution, guards
-    database/client.ts   Prisma client (pg adapter)
-    email/               Email transport (console only)
-    actions.ts           Server Action result/validation helpers
-  lib/                   Isomorphic utilities (env, errors, logger, markets, validation, formatters)
-  styles/                tokens.css (raw tokens) + globals.css (Tailwind theme mapping)
-  proxy.ts               Optimistic redirect for signed-out users (not authorization)
-tests/
-  unit/                  Pure logic: permissions, validation, env, design-token contrast
-  integration/           Services against a real Postgres test database
-  e2e/                   Playwright against a production build
+    auth/                    Better Auth, session, platform gate, active org/branch cookies
+    authorization/           Permissions, OrganizationContext, guards, service contexts
+    jobs/                    Queue, runner (SKIP LOCKED), handlers, daily job, cron auth
+    integrations/payments/   PaymentProvider interface + sandbox implementation
+    database/, email/, actions.ts, forms.ts, pages.ts, active-branch.ts
+  lib/                       money, dates, csv, env, errors, logger, markets, validation, formatters
+  proxy.ts                   Optimistic redirect for signed-out users (not authorization)
+  instrumentation.ts         Server error reporting hook
+tests/unit, tests/integration, tests/e2e
 ```
 
-Empty module folders from the suggested layout are intentionally **not** created. Add a
-module when its first feature is implemented.
+Organization app routes: `/app` (dashboard), `front-desk`, `reports`, `members` (+ `new`, `import`,
+`[id]`, `[id]/edit`, `[id]/sell`, `[id]/training`), `memberships`, `plans`, `attendance`, `leads`,
+`classes` (+ `[sessionId]`), `bookings`, `trainers`, `pos`, `inventory` (+ products, purchase orders),
+`suppliers`, `equipment`, `maintenance`, `finance/invoices|payments|expenses`, `staff`, `shifts`,
+`leave`, `notifications`, `organization` (+ `branches`, `team`), `settings` (+ `integrations`,
+`audit-logs`), `documents/[id]` (download), `reports/export/[dataset]` (CSV).
 
 ## Request flow
 
 ```text
-Browser ──► proxy.ts (no session cookie? → /login)        optimistic only
-        ──► Page / Server Action
-              requireUser()                 session → users row
-              requireOrganizationContext()  membership + branch scope from DB
-              parseInput(zodSchema, form)   untrusted input → typed input
-              moduleService(db, ctx, input) requirePermission + tenant-filtered queries
-                 └─ $transaction { write; recordAudit }
-              runAction → ActionResult { ok, data | message, fieldErrors, values }
+Browser ──► proxy.ts (no session cookie → /login)              optimistic only
+        ──► Page / Server Action / Route Handler
+              requireUser() → requireOrganizationContext()       membership + scope from DB, per request
+              parseInput(zod, input)                             untrusted → typed
+              module service(db, ctx, input)                     requirePermission + tenant/branch filters
+                └─ $transaction { writes; recordAudit; emitEvent / enqueueJob (outbox) }
+              runAction → ActionResult                            expected errors → messages; others logged
+Scheduler ──► /api/cron/daily, /api/jobs/run (Bearer CRON_SECRET) ──► job runner ──► handlers
+Provider  ──► /api/webhooks/payments/sandbox (HMAC verified) ──► processProviderEvent (idempotent)
 ```
 
-- **Server Components** load data through module services. Missing or out-of-tenant
-  records become `notFound()` via `orNotFound`.
-- **Server Actions** are public endpoints. Each one authenticates, resolves context,
-  validates and authorizes independently. IDs bound with `.bind()` are still re-checked
-  inside the service.
-- **Errors:** `AppError` subclasses (`ValidationError`, `ForbiddenError`, `NotFoundError`,
-  `ConflictError`, `AuthenticationError`) are expected and shown to users. Anything else
-  is logged as JSON and replaced with a generic message.
-- **Audit:** state-changing service functions write `audit_logs` in the same transaction.
+Trusted non-user work (webhooks, jobs) uses `createServiceContext(orgId, [permissions])`, a
+least-privilege context with no user.
 
-## Data model (current)
+## Data model overview
 
-| Table                                            | Owner                                       | Notes                                                                                                               |
-| ------------------------------------------------ | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `users`, `sessions`, `accounts`, `verifications` | Better Auth                                 | `users.platform_role` for platform admins                                                                           |
-| `organizations`                                  | tenant root                                 | country, timezone (IANA), currency (ISO 4217), locale, status, `is_demo`                                            |
-| `branches`                                       | organization                                | `UNIQUE(id, organization_id)` target for composite FKs; `UNIQUE(organization_id, code)`; deactivation, never delete |
-| `organization_memberships`                       | organization                                | role, `branch_scope`, status (ACTIVE/SUSPENDED/REVOKED)                                                             |
-| `branch_assignments`                             | organization                                | composite FKs to membership and branch                                                                              |
-| `audit_logs`                                     | organization (nullable for platform events) | append-only                                                                                                         |
+| Area                  | Tables                                                                                                                                                                 |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Identity & tenancy    | users, sessions, accounts, verifications, organizations, branches, organization_memberships, branch_assignments, invitations(+branches)                                |
+| Members               | members, member_notes, member_documents, membership_plans, plan_branches, gym_memberships, membership_changes                                                          |
+| Billing               | invoices, invoice_lines, payments, refunds, payment_attempts, provider_events, organization_sequences                                                                  |
+| Attendance & schedule | check_ins, rooms, class_types, class_sessions, bookings, training_sessions                                                                                             |
+| CRM & workforce       | leads, lead_activities, follow_ups, employees, shifts, leave_requests                                                                                                  |
+| Facilities            | suppliers, equipment, maintenance_schedules, maintenance_work_orders, equipment_transfers, products, product_stock, stock_movements, purchase_orders(+lines), expenses |
+| Platform & automation | jobs, notifications, email_deliveries, webhook_endpoints, webhook_deliveries, import_runs, platform_plans, organization_subscriptions, contact_requests, audit_logs    |
+
+Rules for tenant-owned tables:
+
+1. Every row has `organization_id`.
+2. Required references to tenant rows use **composite FKs** `(id, organization_id)`.
+3. Optional references use a single-column FK plus the `fg_assert_same_organization` trigger
+   (composite FKs can't be optional in Prisma).
+4. Business identifiers (member, invoice, receipt, asset, PO numbers) come from atomic
+   per-organization sequences.
+5. History is preserved: deactivate/archive/void/cancel instead of delete.
 
 ## Conventions for new modules
 
-1. Add tables with `organization_id`; branch-owned tables reference
-   `branches(id, organization_id)` with a composite FK.
-2. Create `src/modules/<name>/{schemas,service}.ts`. Services take `(db, ctx, input)` and
-   start with `requirePermission`.
-3. Add integration tests proving that cross-tenant and out-of-scope access fails.
-4. Add the nav item to `components/layouts/nav-items.ts` only once the screen works end to end.
-5. Update `docs/ROADMAP.md` and, for consequential choices, add an ADR.
+1. Tables per the rules above; add CHECKs for invariants in the migration.
+2. `src/modules/<name>/{schemas,service}.ts`; services take `(db, ctx, input)` and start with
+   `requirePermission`; queries filter by `ctx.organizationId` and branch scope.
+3. Integration tests for cross-tenant, out-of-scope and permission failures.
+4. Audit important actions; emit webhook events where useful; enqueue side effects.
+5. Add navigation only when the screen works end to end; update `docs/ROADMAP.md`.
 
-## Configuration
-
-Environment variables are validated in `src/lib/env.ts`. See `.env.example`.
+Key decisions: [0002 auth](decisions/0002-authentication-better-auth.md) ·
+[0003 tenancy](decisions/0003-tenancy-and-authorization.md) · [0004 RBAC](decisions/0004-rbac-in-code.md) ·
+[0005 invitations](decisions/0005-invitations-and-team-access-rules.md) ·
+[0006 money/dates/visibility](decisions/0006-money-dates-and-member-visibility.md) ·
+[0007 billing](decisions/0007-billing-and-payments.md) · [0008 jobs/webhooks](decisions/0008-jobs-notifications-and-webhooks.md) ·
+[0009 inventory/equipment/documents](decisions/0009-inventory-equipment-and-documents.md)
