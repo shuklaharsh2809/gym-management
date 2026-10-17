@@ -101,6 +101,7 @@ export async function createInvoiceInTx(
       taxMinor: l.taxMinor,
       totalMinor: l.totalMinor,
       membershipId: l.membershipId,
+      productId: l.productId,
     })),
   });
   await recordAudit(tx, {
