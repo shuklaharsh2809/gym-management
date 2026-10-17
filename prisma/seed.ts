@@ -193,6 +193,28 @@ async function main() {
       console.log(`+ ${org.name}: suppliers, equipment, inventory and expenses`);
   }
 
+  // Demo organizations are on the Growth plan; run the daily job once so reminders exist.
+  const growth = await db.platformPlan.findUnique({ where: { code: "growth" } });
+  for (const org of organizations) {
+    const record = await db.organization.findUniqueOrThrow({ where: { slug: org.slug } });
+    if (
+      growth &&
+      !(await db.organizationSubscription.findUnique({ where: { organizationId: record.id } }))
+    ) {
+      await db.organizationSubscription.create({
+        data: {
+          organizationId: record.id,
+          planId: growth.id,
+          status: "ACTIVE",
+          currentPeriodEnd: new Date(Date.now() + 30 * 86_400_000),
+        },
+      });
+    }
+    const { runDailyForOrganization } = await import("../src/server/jobs/daily");
+    const { todayIn } = await import("../src/lib/dates");
+    await runDailyForOrganization(db as never, record.id, todayIn(record.timezone));
+  }
+
   console.log(`\nDemo accounts (password for all: ${DEMO_PASSWORD}):`);
   for (const u of users) console.log(`  ${u.email.padEnd(34)} ${u.name}`);
 }

@@ -1,6 +1,9 @@
 import {
   Boxes,
+  BarChart3,
   Building2,
+  Plug,
+  Settings,
   ClipboardList,
   Cog,
   HandCoins,
@@ -54,6 +57,7 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: ScanLine,
         permission: "attendance.checkin",
       },
+      { href: "/app/reports", label: "Reports", icon: BarChart3, permission: "reports.read" },
     ],
   },
   {
@@ -172,6 +176,19 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Settings",
     items: [
+      {
+        href: "/app/settings",
+        label: "General",
+        icon: Settings,
+        permission: "settings.manage",
+        exact: true,
+      },
+      {
+        href: "/app/settings/integrations",
+        label: "Integrations",
+        icon: Plug,
+        permission: "integrations.manage",
+      },
       {
         href: "/app/settings/audit-logs",
         label: "Audit log",

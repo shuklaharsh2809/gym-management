@@ -145,47 +145,54 @@ model Organization {
   createdAt                     DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  branches              Branch[]
-  memberships           OrganizationMembership[]
-  branchAssignments     BranchAssignment[]
-  auditLogs             AuditLog[]
-  invitations           Invitation[]
-  invitationBranches    InvitationBranch[]
-  members               Member[]
-  planBranches          PlanBranch[]
-  gymMemberships        GymMembership[]
-  invoices              Invoice[]
-  payments              Payment[]
-  checkIns              CheckIn[]
-  sequences             OrganizationSequence[]
-  memberNotes           MemberNote[]
-  plans                 MembershipPlan[]
-  membershipChanges     MembershipChange[]
-  invoiceLines          InvoiceLine[]
-  refunds               Refund[]
-  paymentAttempts       PaymentAttempt[]
-  leads                 Lead[]
-  leadActivities        LeadActivity[]
-  followUps             FollowUp[]
-  employees             Employee[]
-  shifts                Shift[]
-  leaveRequests         LeaveRequest[]
-  rooms                 Room[]
-  classTypes            ClassType[]
-  classSessions         ClassSession[]
-  bookings              Booking[]
-  trainingSessions      TrainingSession[]
-  suppliers             Supplier[]
-  equipment             Equipment[]
-  maintenanceSchedules  MaintenanceSchedule[]
-  maintenanceWorkOrders MaintenanceWorkOrder[]
-  equipmentTransfers    EquipmentTransfer[]
-  products              Product[]
-  productStocks         ProductStock[]
-  stockMovements        StockMovement[]
-  purchaseOrders        PurchaseOrder[]
-  purchaseOrderLines    PurchaseOrderLine[]
-  expenses              Expense[]
+  branches                 Branch[]
+  memberships              OrganizationMembership[]
+  branchAssignments        BranchAssignment[]
+  auditLogs                AuditLog[]
+  invitations              Invitation[]
+  invitationBranches       InvitationBranch[]
+  members                  Member[]
+  planBranches             PlanBranch[]
+  gymMemberships           GymMembership[]
+  invoices                 Invoice[]
+  payments                 Payment[]
+  checkIns                 CheckIn[]
+  sequences                OrganizationSequence[]
+  memberNotes              MemberNote[]
+  plans                    MembershipPlan[]
+  membershipChanges        MembershipChange[]
+  invoiceLines             InvoiceLine[]
+  refunds                  Refund[]
+  paymentAttempts          PaymentAttempt[]
+  leads                    Lead[]
+  leadActivities           LeadActivity[]
+  followUps                FollowUp[]
+  employees                Employee[]
+  shifts                   Shift[]
+  leaveRequests            LeaveRequest[]
+  rooms                    Room[]
+  classTypes               ClassType[]
+  classSessions            ClassSession[]
+  bookings                 Booking[]
+  trainingSessions         TrainingSession[]
+  suppliers                Supplier[]
+  equipment                Equipment[]
+  maintenanceSchedules     MaintenanceSchedule[]
+  maintenanceWorkOrders    MaintenanceWorkOrder[]
+  equipmentTransfers       EquipmentTransfer[]
+  products                 Product[]
+  productStocks            ProductStock[]
+  stockMovements           StockMovement[]
+  purchaseOrders           PurchaseOrder[]
+  purchaseOrderLines       PurchaseOrderLine[]
+  expenses                 Expense[]
+  jobs                     Job[]
+  notifications            Notification[]
+  emailDeliveries          EmailDelivery[]
+  webhookEndpoints         WebhookEndpoint[]
+  webhookDeliveries        WebhookDelivery[]
+  importRuns               ImportRun[]
+  organizationSubscription OrganizationSubscription?
 
   @@map("organizations")
 }
@@ -258,6 +265,7 @@ model OrganizationMembership {
   followUps             FollowUp[]
   employee              Employee?
   maintenanceWorkOrders MaintenanceWorkOrder[]
+  notifications         Notification[]
 
   @@unique([organizationId, userId])
   @@unique([id, organizationId])
@@ -1505,6 +1513,194 @@ model Expense {
 
   @@index([organizationId, branchId, incurredOn])
   @@map("expenses")
+}
+
+// ---------------------------------------------------------------------------
+// Background jobs, notifications and integrations
+// ---------------------------------------------------------------------------
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  DEAD
+}
+
+/// Durable job queue (Postgres, SKIP LOCKED). Retries with exponential backoff.
+model Job {
+  id             String    @id @default(uuid()) @db.Uuid
+  type           String
+  payload        Json
+  organizationId String?   @map("organization_id") @db.Uuid
+  status         JobStatus @default(PENDING)
+  runAt          DateTime  @default(now()) @map("run_at") @db.Timestamptz(3)
+  attempts       Int       @default(0)
+  maxAttempts    Int       @default(5) @map("max_attempts")
+  lastError      String?   @map("last_error")
+  lockedAt       DateTime? @map("locked_at") @db.Timestamptz(3)
+  /// Prevents enqueuing the same logical job twice (e.g. one daily run per organization per day).
+  idempotencyKey String?   @unique @map("idempotency_key")
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([status, runAt])
+  @@map("jobs")
+}
+
+/// In-app notification for a team member.
+model Notification {
+  id                    String    @id @default(uuid()) @db.Uuid
+  organizationId        String    @map("organization_id") @db.Uuid
+  recipientMembershipId String    @map("recipient_membership_id") @db.Uuid
+  type                  String
+  title                 String
+  body                  String?
+  link                  String?
+  readAt                DateTime? @map("read_at") @db.Timestamptz(3)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  recipient    OrganizationMembership @relation(fields: [recipientMembershipId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([recipientMembershipId, readAt, createdAt])
+  @@map("notifications")
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+/// Log of outgoing emails (one row per message).
+model EmailDelivery {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String?        @map("organization_id") @db.Uuid
+  recipient      String
+  subject        String
+  template       String
+  status         DeliveryStatus @default(PENDING)
+  attempts       Int            @default(0)
+  lastError      String?        @map("last_error")
+  sentAt         DateTime?      @map("sent_at") @db.Timestamptz(3)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, createdAt])
+  @@map("email_deliveries")
+}
+
+/// Organization-configured outbound webhook. Payloads are signed with `secret`.
+model WebhookEndpoint {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  url            String
+  description    String?
+  secret         String
+  events         String[]
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  deliveries   WebhookDelivery[]
+
+  @@unique([id, organizationId])
+  @@map("webhook_endpoints")
+}
+
+model WebhookDelivery {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  endpointId     String         @map("endpoint_id") @db.Uuid
+  eventId        String         @map("event_id") @db.Uuid
+  eventType      String         @map("event_type")
+  payload        Json
+  status         DeliveryStatus @default(PENDING)
+  attempts       Int            @default(0)
+  responseStatus Int?           @map("response_status")
+  lastError      String?        @map("last_error")
+  deliveredAt    DateTime?      @map("delivered_at") @db.Timestamptz(3)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  endpoint     WebhookEndpoint @relation(fields: [endpointId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@map("webhook_deliveries")
+}
+
+enum ImportStatus {
+  PREVIEWED
+  COMPLETED
+}
+
+/// Record of a CSV import for traceability.
+model ImportRun {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  type           String
+  fileName       String?      @map("file_name")
+  status         ImportStatus
+  totalRows      Int          @map("total_rows")
+  createdRows    Int          @default(0) @map("created_rows")
+  skippedRows    Int          @default(0) @map("skipped_rows")
+  errors         Json?
+  createdById    String?      @map("created_by_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, createdAt])
+  @@map("import_runs")
+}
+
+// ---------------------------------------------------------------------------
+// SaaS plans and subscriptions (FitGrid's own billing of organizations)
+// ---------------------------------------------------------------------------
+
+model PlatformPlan {
+  id                String   @id @default(uuid()) @db.Uuid
+  code              String   @unique
+  name              String
+  /// null = unlimited
+  maxBranches       Int?     @map("max_branches")
+  maxMembers        Int?     @map("max_members")
+  features          String[] @default([])
+  priceMinorMonthly Int      @map("price_minor_monthly")
+  currency          String   @db.Char(3)
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  subscriptions OrganizationSubscription[]
+
+  @@map("platform_plans")
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+model OrganizationSubscription {
+  id               String             @id @default(uuid()) @db.Uuid
+  organizationId   String             @unique @map("organization_id") @db.Uuid
+  planId           String             @map("plan_id") @db.Uuid
+  status           SubscriptionStatus @default(TRIALING)
+  trialEndsAt      DateTime?          @map("trial_ends_at") @db.Timestamptz(3)
+  currentPeriodEnd DateTime?          @map("current_period_end") @db.Timestamptz(3)
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plan         PlatformPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@map("organization_subscriptions")
 }
 
 // ---------------------------------------------------------------------------

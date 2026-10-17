@@ -7,7 +7,7 @@ export default function globalSetup() {
   execFileSync("npx", ["prisma", "migrate", "deploy"], { env, stdio: "pipe" });
   // Empty every application table (keeps the migrations table).
   const sql = `DO $$ DECLARE r record; BEGIN
-    FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations' LOOP
+    FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename NOT IN ('_prisma_migrations', 'platform_plans') LOOP
       EXECUTE format('TRUNCATE TABLE %I CASCADE', r.tablename);
     END LOOP; END $$;`;
   execFileSync("npx", ["prisma", "db", "execute", "--stdin"], {

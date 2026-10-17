@@ -15,6 +15,8 @@ import {
 } from "@/server/authorization/guards";
 import type { MemberInput, MemberSort, MembershipFilter } from "./schemas";
 import { memberScopeWhere } from "./scope";
+import { assertWithinLimit } from "@/modules/entitlements/service";
+import { emitEvent } from "@/modules/integrations/webhooks";
 
 export class DuplicateMemberError extends ConflictError {
   constructor(readonly duplicates: { id: string; name: string; memberNumber: string }[]) {
@@ -264,6 +266,7 @@ export async function createMemberInTx(
 ) {
   requirePermission(ctx, "members.create");
   await assertHomeBranch(tx, ctx, input.homeBranchId);
+  await assertWithinLimit(tx, ctx.organizationId, "members");
   if (!input.confirmDuplicate) {
     const duplicates = await findDuplicateMembers(tx, ctx, input);
     if (duplicates.length) throw new DuplicateMemberError(duplicates);
@@ -289,6 +292,7 @@ export async function createMemberInTx(
     entityId: member.id,
     metadata: { memberNumber, duplicateConfirmed: input.confirmDuplicate },
   });
+  await emitEvent(tx, ctx.organizationId, "member.created", { memberId: member.id, memberNumber });
   return member;
 }
 
@@ -339,6 +343,7 @@ export async function setMemberArchived(
   requirePermission(ctx, "members.update");
   const existing = await getMember(db, ctx, memberId);
   if ((existing.status === "ARCHIVED") === archived) return;
+  if (!archived) await assertWithinLimit(db, ctx.organizationId, "members");
   await db.$transaction(async (tx) => {
     await tx.member.update({
       where: { id: existing.id, organizationId: ctx.organizationId },
