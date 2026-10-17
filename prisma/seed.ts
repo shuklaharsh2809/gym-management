@@ -110,25 +110,28 @@ async function upsertUser(user: DemoUser, passwordHash: string) {
   const existing = await db.user.findUnique({ where: { email: user.email } });
   if (existing) return existing;
   // Mirror Better Auth's sign-up: the credential account's accountId is the user ID.
-  return db.$transaction(async (tx) => {
-    const created = await tx.user.create({
-      data: {
-        name: user.name,
-        email: user.email,
-        emailVerified: true,
-        platformRole: user.platformRole ?? "NONE",
-      },
-    });
-    await tx.account.create({
-      data: {
-        userId: created.id,
-        providerId: "credential",
-        accountId: created.id,
-        password: passwordHash,
-      },
-    });
-    return created;
-  });
+  return db.$transaction(
+    async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          name: user.name,
+          email: user.email,
+          emailVerified: true,
+          platformRole: user.platformRole ?? "NONE",
+        },
+      });
+      await tx.account.create({
+        data: {
+          userId: created.id,
+          providerId: "credential",
+          accountId: created.id,
+          password: passwordHash,
+        },
+      });
+      return created;
+    },
+    { timeout: 120_000 },
+  );
 }
 
 async function main() {
@@ -151,61 +154,64 @@ async function main() {
       console.log(`- ${org.name}: already present, skipped`);
       continue;
     }
-    await db.$transaction(async (tx) => {
-      const created = await tx.organization.create({
-        data: {
-          slug: org.slug,
-          name: org.name,
-          legalName: org.legalName,
-          countryCode: org.countryCode,
-          timezone: org.timezone,
-          currency: org.currency,
-          locale: org.locale,
-          isDemo: true,
-        },
-      });
-      const branchIds = new Map<string, string>();
-      for (const b of org.branches) {
-        const branch = await tx.branch.create({
+    await db.$transaction(
+      async (tx) => {
+        const created = await tx.organization.create({
           data: {
-            ...b,
-            organizationId: created.id,
+            slug: org.slug,
+            name: org.name,
+            legalName: org.legalName,
             countryCode: org.countryCode,
             timezone: org.timezone,
+            currency: org.currency,
+            locale: org.locale,
+            isDemo: true,
           },
         });
-        branchIds.set(b.code, branch.id);
-      }
-      for (const m of org.members) {
-        const membership = await tx.organizationMembership.create({
-          data: {
-            organizationId: created.id,
-            userId: userIds.get(m.user)!,
-            role: m.role,
-            branchScope: m.scope,
-          },
-        });
-        for (const code of m.branches ?? []) {
-          await tx.branchAssignment.create({
+        const branchIds = new Map<string, string>();
+        for (const b of org.branches) {
+          const branch = await tx.branch.create({
             data: {
+              ...b,
               organizationId: created.id,
-              membershipId: membership.id,
-              branchId: branchIds.get(code)!,
+              countryCode: org.countryCode,
+              timezone: org.timezone,
             },
           });
+          branchIds.set(b.code, branch.id);
         }
-      }
-      await tx.auditLog.create({
-        data: {
-          organizationId: created.id,
-          actorUserId: userIds.get(org.members[0]!.user)!,
-          action: "organization.created",
-          entityType: "organization",
-          entityId: created.id,
-          metadata: { source: "demo-seed" },
-        },
-      });
-    });
+        for (const m of org.members) {
+          const membership = await tx.organizationMembership.create({
+            data: {
+              organizationId: created.id,
+              userId: userIds.get(m.user)!,
+              role: m.role,
+              branchScope: m.scope,
+            },
+          });
+          for (const code of m.branches ?? []) {
+            await tx.branchAssignment.create({
+              data: {
+                organizationId: created.id,
+                membershipId: membership.id,
+                branchId: branchIds.get(code)!,
+              },
+            });
+          }
+        }
+        await tx.auditLog.create({
+          data: {
+            organizationId: created.id,
+            actorUserId: userIds.get(org.members[0]!.user)!,
+            action: "organization.created",
+            entityType: "organization",
+            entityId: created.id,
+            metadata: { source: "demo-seed" },
+          },
+        });
+      },
+      { timeout: 120_000 },
+    );
     console.log(`+ ${org.name}: created with ${org.branches.length} branches`);
   }
 

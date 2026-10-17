@@ -8,6 +8,9 @@ import { addDays, dayBounds, todayIn, toDbDate } from "../src/lib/dates";
 import { computeLine, sumLines } from "../src/lib/money";
 import { computeEndDate } from "../src/modules/memberships/lifecycle";
 
+/** Bulk seeding issues thousands of statements; allow for a distant hosted database. */
+const SEED_TX_TIMEOUT_MS = 15 * 60_000;
+
 function prng(seed: number) {
   let s = seed;
   return () => {
@@ -401,7 +404,7 @@ export async function seedOperations(
         });
       }
     },
-    { timeout: 120_000 },
+    { timeout: SEED_TX_TIMEOUT_MS },
   );
   return true;
 }
@@ -628,7 +631,7 @@ export async function seedTeamAndSchedule(
         }
       }
     },
-    { timeout: 120_000 },
+    { timeout: SEED_TX_TIMEOUT_MS },
   );
   return true;
 }
@@ -864,7 +867,7 @@ export async function seedFacilities(
         });
       }
     },
-    { timeout: 120_000 },
+    { timeout: SEED_TX_TIMEOUT_MS },
   );
   return true;
 }
