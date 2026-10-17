@@ -1,0 +1,60 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-canvas: var(--fg-canvas);
+  --color-surface: var(--fg-surface);
+  --color-muted: var(--fg-muted);
+  --color-border: var(--fg-border);
+  --color-border-strong: var(--fg-border-strong);
+  --color-foreground: var(--fg-text);
+  --color-muted-foreground: var(--fg-text-muted);
+
+  --color-brand: var(--fg-navy-900);
+  --color-brand-hover: var(--fg-navy-800);
+  --color-brand-active: var(--fg-navy-700);
+  --color-sidebar-foreground: var(--fg-sidebar-text);
+  --color-sidebar-muted: var(--fg-sidebar-text-muted);
+
+  /* Primary actions use emerald-700: white text on #10B981 fails WCAG AA. */
+  --color-primary: var(--fg-emerald-700);
+  --color-primary-hover: var(--fg-emerald-800);
+  --color-primary-foreground: #ffffff;
+  --color-accent: var(--fg-emerald-500);
+  --color-accent-deep: var(--fg-emerald-900);
+  --color-ring: var(--fg-emerald-700);
+
+  --color-success: var(--fg-success);
+  --color-success-subtle: var(--fg-success-subtle);
+  --color-warning: var(--fg-warning);
+  --color-warning-subtle: var(--fg-warning-subtle);
+  --color-danger: var(--fg-danger);
+  --color-danger-subtle: var(--fg-danger-subtle);
+  --color-info: var(--fg-info);
+  --color-info-subtle: var(--fg-info-subtle);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
+  --shadow-popover: 0 8px 24px rgb(15 23 42 / 0.12);
+
+  --width-sidebar: var(--fg-sidebar-width);
+  --width-sidebar-collapsed: var(--fg-sidebar-width-collapsed);
+  --height-topbar: var(--fg-topbar-height);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-canvas font-sans text-foreground antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+}

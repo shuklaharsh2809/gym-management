@@ -1,0 +1,238 @@
+// FitGrid database schema.
+// Conventions: UUID primary keys, snake_case tables/columns, explicit organization ownership.
+// Branch-owned rows reference Branch through (branch_id, organization_id) composite foreign keys
+// so a row can never point at a branch in a different organization.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Identity (Better Auth managed tables: user, session, account, verification)
+// ---------------------------------------------------------------------------
+
+enum PlatformRole {
+  NONE
+  ADMIN
+}
+
+model User {
+  id            String       @id @default(uuid()) @db.Uuid
+  name          String
+  email         String       @unique
+  emailVerified Boolean      @default(false) @map("email_verified")
+  image         String?
+  platformRole  PlatformRole @default(NONE) @map("platform_role")
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  sessions    Session[]
+  accounts    Account[]
+  memberships OrganizationMembership[]
+  auditLogs   AuditLog[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @unique
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @map("user_id") @db.Uuid
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at") @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at") @db.Timestamptz(3)
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id @default(uuid()) @db.Uuid
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy
+// ---------------------------------------------------------------------------
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum BranchStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum MembershipStatus {
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  BRANCH_MANAGER
+  RECEPTIONIST
+  TRAINER
+  ACCOUNTANT
+  EQUIPMENT_TECHNICIAN
+}
+
+/// ALL_BRANCHES: organization-wide access. ASSIGNED_BRANCHES: only branches in BranchAssignment.
+enum BranchAccessScope {
+  ALL_BRANCHES
+  ASSIGNED_BRANCHES
+}
+
+model Organization {
+  id          String             @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String             @unique
+  legalName   String?            @map("legal_name")
+  countryCode String             @map("country_code") @db.Char(2)
+  timezone    String
+  currency    String             @db.Char(3)
+  locale      String
+  status      OrganizationStatus @default(ACTIVE)
+  isDemo      Boolean            @default(false) @map("is_demo")
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  branches          Branch[]
+  memberships       OrganizationMembership[]
+  branchAssignments BranchAssignment[]
+  auditLogs         AuditLog[]
+
+  @@map("organizations")
+}
+
+model Branch {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  name           String
+  code           String
+  status         BranchStatus @default(ACTIVE)
+  timezone       String
+  addressLine1   String?      @map("address_line1")
+  addressLine2   String?      @map("address_line2")
+  city           String?
+  region         String?
+  postalCode     String?      @map("postal_code")
+  countryCode    String       @map("country_code") @db.Char(2)
+  phone          String?
+  email          String?
+  deactivatedAt  DateTime?    @map("deactivated_at") @db.Timestamptz(3)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  assignments  BranchAssignment[]
+
+  // Target for composite foreign keys from branch-owned rows.
+  @@unique([id, organizationId])
+  @@unique([organizationId, code])
+  @@index([organizationId, status])
+  @@map("branches")
+}
+
+model OrganizationMembership {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  userId         String            @map("user_id") @db.Uuid
+  role           OrganizationRole
+  branchScope    BranchAccessScope @map("branch_scope")
+  status         MembershipStatus  @default(ACTIVE)
+  revokedAt      DateTime?         @map("revoked_at") @db.Timestamptz(3)
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  user              User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  branchAssignments BranchAssignment[]
+
+  @@unique([organizationId, userId])
+  @@unique([id, organizationId])
+  @@index([userId, status])
+  @@map("organization_memberships")
+}
+
+model BranchAssignment {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  membershipId   String   @map("membership_id") @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  // Composite keys guarantee membership and branch belong to the same organization.
+  membership   OrganizationMembership @relation(fields: [membershipId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  branch       Branch                 @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@unique([membershipId, branchId])
+  @@index([organizationId, branchId])
+  @@map("branch_assignments")
+}
+
+// ---------------------------------------------------------------------------
+// Audit
+// ---------------------------------------------------------------------------
+
+/// Append-only. organizationId is null only for platform-level events.
+model AuditLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+  actorUserId    String?  @map("actor_user_id") @db.Uuid
+  action         String
+  entityType     String   @map("entity_type")
+  entityId       String?  @map("entity_id") @db.Uuid
+  metadata       Json?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  actor        User?         @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}

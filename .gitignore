@@ -1,0 +1,14 @@
+node_modules
+.next
+out
+build
+next-env.d.ts
+*.tsbuildinfo
+src/generated
+.env
+.env.local
+.env.test.local
+coverage
+playwright-report
+test-results
+.DS_Store

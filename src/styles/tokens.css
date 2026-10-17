@@ -1,0 +1,41 @@
+/*
+ * FitGrid design tokens. Components use the semantic names (bg-primary, text-muted-foreground…)
+ * exposed through Tailwind in globals.css, never raw hex values.
+ * Contrast for the pairs we rely on is verified in tests/unit/design-tokens.test.ts.
+ */
+:root {
+  /* Brand palette */
+  --fg-navy-900: #172b4d;
+  --fg-navy-800: #22385f;
+  --fg-navy-700: #2d4673;
+  --fg-emerald-500: #10b981;
+  --fg-emerald-700: #047857;
+  --fg-emerald-800: #065f46;
+  --fg-emerald-900: #064e3b;
+
+  /* Neutrals */
+  --fg-canvas: #f8fafc;
+  --fg-surface: #ffffff;
+  --fg-muted: #f1f5f9;
+  --fg-border: #e2e8f0;
+  --fg-border-strong: #cbd5e1;
+  --fg-text: #0f172a;
+  --fg-text-muted: #64748b;
+  --fg-sidebar-text: #e2e8f0;
+  --fg-sidebar-text-muted: #a9b6cc;
+
+  /* Status */
+  --fg-success: #15803d;
+  --fg-success-subtle: #f0fdf4;
+  --fg-warning: #b45309;
+  --fg-warning-subtle: #fffbeb;
+  --fg-danger: #b91c1c;
+  --fg-danger-subtle: #fef2f2;
+  --fg-info: #1d4ed8;
+  --fg-info-subtle: #eff6ff;
+
+  /* Layout */
+  --fg-sidebar-width: 248px;
+  --fg-sidebar-width-collapsed: 72px;
+  --fg-topbar-height: 64px;
+}
