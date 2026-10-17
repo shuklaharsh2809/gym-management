@@ -17,6 +17,7 @@ import { getActiveBranchState } from "@/server/active-branch";
 import { requireOrganizationContext } from "@/server/auth/session";
 import { hasPermission } from "@/server/authorization/guards";
 import { db } from "@/server/database/client";
+import { InitialsAvatar } from "@/components/business/photo";
 
 export const metadata: Metadata = { title: "Members" };
 
@@ -132,13 +133,18 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
               {result.items.map((m) => (
                 <tr key={m.id} className="hover:bg-muted/40">
                   <Td>
-                    <Link
-                      href={`/app/members/${m.id}`}
-                      className="font-medium hover:text-primary hover:underline"
-                    >
-                      {m.firstName} {m.lastName}
-                    </Link>
-                    <p className="font-mono text-xs text-muted-foreground">{m.memberNumber}</p>
+                    <div className="flex items-center gap-3">
+                      <InitialsAvatar firstName={m.firstName} lastName={m.lastName} seed={m.id} />
+                      <div className="min-w-0">
+                        <Link
+                          href={`/app/members/${m.id}`}
+                          className="font-medium hover:text-primary hover:underline"
+                        >
+                          {m.firstName} {m.lastName}
+                        </Link>
+                        <p className="font-mono text-xs text-muted-foreground">{m.memberNumber}</p>
+                      </div>
+                    </div>
                   </Td>
                   <Td className="hidden md:table-cell">
                     <p>{m.phone ?? "—"}</p>
