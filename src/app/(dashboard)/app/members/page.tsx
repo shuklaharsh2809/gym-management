@@ -49,11 +49,18 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
         description="Everyone who trains with you. Search by name, phone, email or member number."
         actions={
           canCreate && (
-            <Button asChild>
-              <Link href="/app/members/new">
-                <UserPlus aria-hidden /> Add member
-              </Link>
-            </Button>
+            <div className="flex gap-2">
+              {hasPermission(ctx, "members.import") && (
+                <Button asChild variant="secondary">
+                  <Link href="/app/members/import">Import CSV</Link>
+                </Button>
+              )}
+              <Button asChild>
+                <Link href="/app/members/new">
+                  <UserPlus aria-hidden /> Add member
+                </Link>
+              </Button>
+            </div>
           )
         }
       />
