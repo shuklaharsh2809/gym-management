@@ -37,6 +37,10 @@ export const getOrganizationContext = cache(async () => {
 
 export async function requireOrganizationContext() {
   const ctx = await getOrganizationContext();
-  if (!ctx) redirect("/onboarding");
+  if (!ctx) {
+    // Platform administrators without an organization of their own go to the platform area.
+    const user = await requireUser();
+    redirect(user.platformRole === "ADMIN" ? "/platform" : "/onboarding");
+  }
   return ctx;
 }
