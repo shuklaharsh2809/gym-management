@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: fitgrid
+          POSTGRES_PASSWORD: fitgrid
+          POSTGRES_DB: fitgrid
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U fitgrid" --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://fitgrid:fitgrid@localhost:5433/fitgrid
+      TEST_DATABASE_URL: postgresql://fitgrid:fitgrid@localhost:5433/fitgrid_test
+      BETTER_AUTH_URL: http://localhost:3000
+      BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-else-0000
+      PAYMENTS_SANDBOX_WEBHOOK_SECRET: ci-only-webhook-secret-not-used-elsewhere-00
+      CRON_SECRET: ci-only-cron-secret-not-used-anywhere-else-000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Create test database
+        run: PGPASSWORD=fitgrid psql -h localhost -p 5433 -U fitgrid -c "CREATE DATABASE fitgrid_test"
+      - run: npm ci
+      - run: npx prisma migrate deploy
+      - run: npm run check
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: test-results/
