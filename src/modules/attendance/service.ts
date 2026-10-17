@@ -9,6 +9,7 @@ import type { Database, DbClient } from "@/server/database/client";
 import type { OrganizationContext } from "@/server/authorization/context";
 import { requireBranchAccess, requirePermission } from "@/server/authorization/guards";
 import { checkInEligibility, type Eligibility, type EligibilityMembership } from "./eligibility";
+import { emitEvent } from "@/modules/integrations/webhooks";
 
 async function loadBranch(db: DbClient, ctx: OrganizationContext, branchId: string) {
   if (!uuidSchema.safeParse(branchId).success) throw new NotFoundError();
@@ -199,6 +200,13 @@ export async function checkInMember(
       entityId: checkIn.id,
       metadata: { memberId: member.id, branchId: branch.id },
     });
+    if (eligibility.eligible) {
+      await emitEvent(tx, ctx.organizationId, "checkin.recorded", {
+        checkInId: checkIn.id,
+        memberId: member.id,
+        branchId: branch.id,
+      });
+    }
     return eligibility.eligible
       ? { result: "allowed" as const, checkInId: checkIn.id, eligibility }
       : { result: "denied" as const, checkInId: checkIn.id, eligibility };
