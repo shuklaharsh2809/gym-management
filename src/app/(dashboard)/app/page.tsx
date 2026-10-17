@@ -1,12 +1,15 @@
 import {
   AlarmClock,
   CalendarCheck,
+  CalendarDays,
   CircleDollarSign,
   CreditCard,
   History,
   Hourglass,
   PhoneCall,
   ReceiptText,
+  ScanLine,
+  ShoppingBag,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -14,13 +17,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { DailyBarChart, DailyLineChart, HourBarChart } from "@/components/business/charts";
 import { Money } from "@/components/business/money";
+import { PhotoBackdrop } from "@/components/business/photo";
 import { StatCard } from "@/components/business/stat-card";
 import { EmptyState } from "@/components/shared/empty-state";
-import { PageHeader } from "@/components/shared/page-header";
 import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { addDays, todayIn, zonedDateTime } from "@/lib/dates";
 import { describeAuditAction, formatDateTime } from "@/lib/formatters";
+import { PHOTOS } from "@/lib/imagery";
 import { currencyDigits } from "@/lib/money";
 import { listRecentAuditEvents } from "@/modules/audit/queries";
 import { dueFollowUps } from "@/modules/crm/service";
@@ -89,13 +94,68 @@ export default async function DashboardPage() {
     hasPermission(ctx, "audit.read") ? listRecentAuditEvents(db, ctx, 8) : null,
   ]);
   const m = (minor: number) => <Money minor={minor} currency={currency} locale={locale} />;
+  const quickActions = [
+    {
+      href: "/app/front-desk",
+      label: "Check in a member",
+      icon: ScanLine,
+      show: hasPermission(ctx, "attendance.checkin"),
+    },
+    {
+      href: "/app/members/new",
+      label: "Add member",
+      icon: UserPlus,
+      show: hasPermission(ctx, "members.create"),
+    },
+    {
+      href: "/app/classes",
+      label: "Today's classes",
+      icon: CalendarDays,
+      show: hasPermission(ctx, "schedule.read"),
+    },
+    {
+      href: "/app/pos",
+      label: "Point of sale",
+      icon: ShoppingBag,
+      show: hasPermission(ctx, "pos.sell"),
+    },
+  ].filter((a) => a.show);
 
   return (
     <>
-      <PageHeader
-        title={`Welcome, ${user.name.split(" ")[0]}`}
-        description={`${ctx.organization.name} · ${activeBranch?.name ?? "All branches"} · ${ROLE_LABELS[ctx.role]}`}
-      />
+      <section className="relative isolate mb-6 overflow-hidden rounded-xl bg-brand text-white shadow-card">
+        <PhotoBackdrop photo={PHOTOS.gymFloor} priority sizes="(min-width: 1024px) 75vw, 100vw" />
+        <div className="flex flex-col gap-5 p-6 sm:p-8">
+          <div>
+            <p className="text-sm font-medium text-accent">
+              {ctx.organization.name} · {activeBranch?.name ?? "All branches"} ·{" "}
+              {ROLE_LABELS[ctx.role]}
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
+              Welcome back, {user.name.split(" ")[0]}
+            </h1>
+            <p className="mt-1 max-w-lg text-sm text-sidebar-foreground">
+              Here&apos;s how your gym is doing today.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {quickActions.map(({ href, label, icon: Icon }, i) => (
+              <Button
+                key={href}
+                asChild
+                variant={i === 0 ? "primary" : "secondary"}
+                className={
+                  i === 0 ? undefined : "border-white/20 bg-white/10 text-white hover:bg-white/20"
+                }
+              >
+                <Link href={href}>
+                  <Icon aria-hidden /> {label}
+                </Link>
+              </Button>
+            ))}
+          </div>
+        </div>
+      </section>
       {ctx.organization.isDemo && (
         <Alert tone="warning" className="mb-6">
           This is a demo organization with seeded sample data. It is not a real business.
