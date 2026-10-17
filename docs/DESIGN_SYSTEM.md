@@ -75,8 +75,22 @@ row there when introducing a new combination.
 - Focus: visible 2 px emerald-700 outline (`:focus-visible`), emerald-500 on navy.
 - Demo organizations always show a "Demo data" badge and banner.
 
+## Additional components (milestones 3–8)
+
+| Component                      | Path                   | Notes                                                                            |
+| ------------------------------ | ---------------------- | -------------------------------------------------------------------------------- |
+| Table primitives               | `ui/table.tsx`         | Table/THead/TBody/Th/Td with horizontal scroll                                   |
+| ListToolbar, Pagination        | `shared/`              | GET-form search + allow-listed filters; URL-preserving paging                    |
+| SimpleForm, ConfirmAction      | `shared/`              | Server Action forms with result/field errors; single-button actions with confirm |
+| Money, StatCard, status badges | `business/`            | Locale/currency formatting; KPI cards; membership/invoice state badges           |
+| Charts                         | `business/charts.tsx`  | Recharts bar/line/hour charts using token colors                                 |
+| NotificationsBell              | `layouts/`             | Unread count, mark-read                                                          |
+| Marketing blocks               | `shared/marketing.tsx` | Hero, FeatureGrid, Section, Prose                                                |
+
+Accessibility is checked automatically: `tests/e2e/accessibility-platform.spec.ts` runs axe
+(WCAG 2.0/2.1/2.2 A and AA) on public pages and core app screens.
+
 ## Not yet built
 
-Combobox, date picker, data table (TanStack Table), toasts, dialogs for confirmations,
-charts, command palette, breadcrumbs component, timeline, member/membership widgets.
-Add them as modules need them.
+Command palette, combobox and date-range picker components (native inputs are used), drag-and-drop
+lead board, dark mode.

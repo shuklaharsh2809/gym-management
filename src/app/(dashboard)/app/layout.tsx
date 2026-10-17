@@ -4,7 +4,10 @@ import { BranchSelector } from "@/components/layouts/branch-selector";
 import { MobileNav } from "@/components/layouts/mobile-nav";
 import { OrganizationSwitcher } from "@/components/layouts/organization-switcher";
 import { Sidebar } from "@/components/layouts/sidebar";
+import { NotificationsBell } from "@/components/layouts/notifications-bell";
 import { UserMenu } from "@/components/layouts/user-menu";
+import { formatDateTime } from "@/lib/formatters";
+import { listMyNotifications } from "@/modules/notifications/service";
 import { Badge } from "@/components/ui/badge";
 import { resolveActiveBranch } from "@/modules/branches/service";
 import {
@@ -20,9 +23,10 @@ import { db } from "@/server/database/client";
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
   const ctx = await requireOrganizationContext();
-  const [memberships, branchState] = await Promise.all([
+  const [memberships, branchState, notifications] = await Promise.all([
     listActiveMemberships(db, user.id),
     resolveActiveBranch(db, ctx, (await cookies()).get(ACTIVE_BRANCH_COOKIE)?.value),
+    listMyNotifications(db, ctx, 10),
   ]);
   const permissions = [...ctx.permissions];
   const branchSelector = (
@@ -59,8 +63,28 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               Demo data
             </Badge>
           )}
-          <div className="ml-auto">
-            <UserMenu name={user.name} email={user.email} roleLabel={ROLE_LABELS[ctx.role]} />
+          <div className="ml-auto flex items-center gap-1">
+            <NotificationsBell
+              unread={notifications.unread}
+              items={notifications.items.map((n) => ({
+                id: n.id,
+                title: n.title,
+                body: n.body,
+                link: n.link,
+                read: Boolean(n.readAt),
+                when: formatDateTime(
+                  n.createdAt,
+                  ctx.organization.locale,
+                  ctx.organization.timezone,
+                ),
+              }))}
+            />
+            <UserMenu
+              name={user.name}
+              email={user.email}
+              roleLabel={ROLE_LABELS[ctx.role]}
+              isPlatformAdmin={user.platformRole === "ADMIN"}
+            />
           </div>
         </header>
         <div className="border-b border-border bg-surface px-4 py-2 sm:hidden">

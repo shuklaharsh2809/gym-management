@@ -5,10 +5,14 @@ export default function globalSetup() {
   const url = testDatabaseUrl();
   const env = { ...process.env, DATABASE_URL: url };
   execFileSync("npx", ["prisma", "migrate", "deploy"], { env, stdio: "pipe" });
+  // Empty every application table (keeps the migrations table).
+  const sql = `DO $$ DECLARE r record; BEGIN
+    FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename NOT IN ('_prisma_migrations', 'platform_plans') LOOP
+      EXECUTE format('TRUNCATE TABLE %I CASCADE', r.tablename);
+    END LOOP; END $$;`;
   execFileSync("npx", ["prisma", "db", "execute", "--stdin"], {
     env,
-    input: `TRUNCATE TABLE audit_logs, invitation_branches, invitations, branch_assignments, organization_memberships, branches,
-        organizations, verifications, accounts, sessions, users CASCADE;`,
+    input: sql,
     stdio: ["pipe", "pipe", "pipe"],
   });
 }

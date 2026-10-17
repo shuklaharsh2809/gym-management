@@ -8,6 +8,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { hashPassword } from "better-auth/crypto";
 import { PrismaClient } from "../src/generated/prisma/client";
 import type { BranchAccessScope, OrganizationRole } from "../src/generated/prisma/enums";
+import { seedFacilities, seedOperations, seedTeamAndSchedule } from "./seed-operations";
 
 export const DEMO_PASSWORD = "FitGrid-demo-2026";
 
@@ -19,6 +20,7 @@ interface DemoUser {
   key: string;
   name: string;
   email: string;
+  platformRole?: "ADMIN";
 }
 
 const users: DemoUser[] = [
@@ -29,6 +31,12 @@ const users: DemoUser[] = [
   { key: "james", name: "James Whitfield", email: "owner.harbour@example.com" },
   { key: "sam", name: "Sam Okafor", email: "trainer.shoreditch@example.com" },
   { key: "alex", name: "Alex Fernandes", email: "alex.consultant@example.com" },
+  {
+    key: "platform",
+    name: "FitGrid Platform Admin",
+    email: "platform.admin@example.com",
+    platformRole: "ADMIN",
+  },
 ];
 
 interface DemoOrg {
@@ -96,7 +104,12 @@ async function upsertUser(user: DemoUser, passwordHash: string) {
   // Mirror Better Auth's sign-up: the credential account's accountId is the user ID.
   return db.$transaction(async (tx) => {
     const created = await tx.user.create({
-      data: { name: user.name, email: user.email, emailVerified: true },
+      data: {
+        name: user.name,
+        email: user.email,
+        emailVerified: true,
+        platformRole: user.platformRole ?? "NONE",
+      },
     });
     await tx.account.create({
       data: {
@@ -179,6 +192,39 @@ async function main() {
       });
     });
     console.log(`+ ${org.name}: created with ${org.branches.length} branches`);
+  }
+
+  for (const org of organizations) {
+    const record = await db.organization.findUniqueOrThrow({ where: { slug: org.slug } });
+    const owner = userIds.get(org.members[0]!.user)!;
+    if (await seedOperations(db, record.id, owner))
+      console.log(`+ ${org.name}: plans, members, invoices and visits`);
+    if (await seedTeamAndSchedule(db, record.id, owner))
+      console.log(`+ ${org.name}: staff, classes, bookings, shifts and leads`);
+    if (await seedFacilities(db, record.id, owner))
+      console.log(`+ ${org.name}: suppliers, equipment, inventory and expenses`);
+  }
+
+  // Demo organizations are on the Growth plan; run the daily job once so reminders exist.
+  const growth = await db.platformPlan.findUnique({ where: { code: "growth" } });
+  for (const org of organizations) {
+    const record = await db.organization.findUniqueOrThrow({ where: { slug: org.slug } });
+    if (
+      growth &&
+      !(await db.organizationSubscription.findUnique({ where: { organizationId: record.id } }))
+    ) {
+      await db.organizationSubscription.create({
+        data: {
+          organizationId: record.id,
+          planId: growth.id,
+          status: "ACTIVE",
+          currentPeriodEnd: new Date(Date.now() + 30 * 86_400_000),
+        },
+      });
+    }
+    const { runDailyForOrganization } = await import("../src/server/jobs/daily");
+    const { todayIn } = await import("../src/lib/dates");
+    await runDailyForOrganization(db as never, record.id, todayIn(record.timezone));
   }
 
   console.log(`\nDemo accounts (password for all: ${DEMO_PASSWORD}):`);

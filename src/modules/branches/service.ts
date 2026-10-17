@@ -12,6 +12,7 @@ import {
 } from "@/server/authorization/guards";
 import { suggestBranchCode } from "./codes";
 import type { BranchInput } from "./schemas";
+import { assertWithinLimit } from "@/modules/entitlements/service";
 
 const branchSelect = {
   id: true,
@@ -72,6 +73,7 @@ export async function getBranch(
 
 export async function createBranch(db: Database, ctx: OrganizationContext, input: BranchInput) {
   requirePermission(ctx, "branches.manage");
+  await assertWithinLimit(db, ctx.organizationId, "branches");
   try {
     return await db.$transaction(async (tx) => {
       let code = input.code;
@@ -183,6 +185,7 @@ export async function reactivateBranch(db: Database, ctx: OrganizationContext, b
   requirePermission(ctx, "branches.manage");
   const existing = await getBranch(db, ctx, branchId);
   if (existing.status === "ACTIVE") return existing;
+  await assertWithinLimit(db, ctx.organizationId, "branches");
   return db.$transaction(async (tx) => {
     const branch = await tx.branch.update({
       where: { id: existing.id, organizationId: ctx.organizationId },

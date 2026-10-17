@@ -13,6 +13,8 @@ export interface OrganizationSummary {
   currency: string;
   locale: string;
   isDemo: boolean;
+  memberVisibility: "ORGANIZATION" | "HOME_BRANCH";
+  checkInDuplicateWindowMinutes: number;
 }
 
 /**
@@ -20,10 +22,11 @@ export interface OrganizationSummary {
  * Built only from server-side data (session user + database), never from client input.
  */
 export interface OrganizationContext {
-  userId: string;
+  /** null for trusted service identities (webhooks, background jobs). */
+  userId: string | null;
   organizationId: string;
   organization: OrganizationSummary;
-  membershipId: string;
+  membershipId: string | null;
   role: OrganizationRole;
   permissions: ReadonlySet<Permission>;
   branchScope: BranchScope;
@@ -54,6 +57,8 @@ export async function listActiveMemberships(db: DbClient, userId: string) {
           currency: true,
           locale: true,
           isDemo: true,
+          memberVisibility: true,
+          checkInDuplicateWindowMinutes: true,
         },
       },
     },
@@ -99,5 +104,41 @@ export async function resolveOrganizationContext(
     role: membership.role,
     permissions: permissionsForRole(membership.role),
     branchScope,
+  };
+}
+
+/**
+ * Context for trusted, non-user work in one organization (verified webhooks, scheduled jobs).
+ * Grants only the permissions passed in; never use it for user-initiated requests.
+ */
+export async function createServiceContext(
+  db: DbClient,
+  organizationId: string,
+  permissions: readonly Permission[],
+): Promise<OrganizationContext> {
+  const organization = await db.organization.findUniqueOrThrow({
+    where: { id: organizationId },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      countryCode: true,
+      timezone: true,
+      currency: true,
+      locale: true,
+      isDemo: true,
+      memberVisibility: true,
+      checkInDuplicateWindowMinutes: true,
+    },
+  });
+  return {
+    userId: null,
+    organizationId,
+    organization,
+    membershipId: null,
+    // Not a real membership; role-based team rules never apply to service contexts.
+    role: "ADMIN",
+    permissions: new Set(permissions),
+    branchScope: { kind: "all" },
   };
 }

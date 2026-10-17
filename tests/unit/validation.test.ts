@@ -75,6 +75,8 @@ describe("environment validation", () => {
     DATABASE_URL: "postgresql://u:p@localhost:5432/db",
     BETTER_AUTH_SECRET: "x".repeat(32),
     BETTER_AUTH_URL: "http://localhost:3000",
+    PAYMENTS_SANDBOX_WEBHOOK_SECRET: "y".repeat(32),
+    CRON_SECRET: "z".repeat(32),
   };
 
   it("accepts a complete configuration", () => {

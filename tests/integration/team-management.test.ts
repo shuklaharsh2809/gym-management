@@ -90,17 +90,17 @@ describe("guardrails", () => {
     const { orgA, users } = await twoTenantWorld();
     const ownerCtx = await contextFor(users.ownerA.id);
     await expect(
-      updateMemberAccess(db, ownerCtx, ownerCtx.membershipId, access("ACCOUNTANT")),
+      updateMemberAccess(db, ownerCtx, ownerCtx.membershipId!, access("ACCOUNTANT")),
     ).rejects.toBeInstanceOf(ForbiddenError);
 
     const admin = await createUser("Admin A");
     await addMember(orgA.id, admin.id, "ADMIN");
     const adminCtx = await contextFor(admin.id);
-    await expect(revokeMember(db, adminCtx, ownerCtx.membershipId)).rejects.toBeInstanceOf(
+    await expect(revokeMember(db, adminCtx, ownerCtx.membershipId!)).rejects.toBeInstanceOf(
       ForbiddenError,
     );
     await expect(
-      setMemberSuspended(db, adminCtx, ownerCtx.membershipId, true),
+      setMemberSuspended(db, adminCtx, ownerCtx.membershipId!, true),
     ).rejects.toBeInstanceOf(ForbiddenError);
   });
 
