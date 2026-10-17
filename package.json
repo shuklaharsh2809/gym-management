@@ -25,7 +25,8 @@
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset",
     "postinstall": "prisma generate",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm test"
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm test",
+    "jobs:work": "tsx scripts/run-jobs.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
