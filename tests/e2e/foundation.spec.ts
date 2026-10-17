@@ -16,6 +16,7 @@ test("account → organization → branch, with audit history", async ({ page })
 
   await expect(page.getByRole("heading", { name: "Welcome, Asha" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Organization: Pulse Athletics/ })).toBeVisible();
+  await page.goto("/app/organization/branches");
   await expect(page.getByRole("link", { name: "Indiranagar" })).toBeVisible();
 
   // Validation errors keep the user's input.
@@ -48,6 +49,7 @@ test("a user cannot open another organization's branch", async ({ browser }) => 
     organization: "Tenant One",
     branch: "Secret Branch",
   });
+  await owner.goto("/app/organization/branches");
   await owner.getByRole("link", { name: "Secret Branch" }).click();
   await expect(owner.getByRole("heading", { name: "Secret Branch" })).toBeVisible();
   const branchUrl = owner.url();

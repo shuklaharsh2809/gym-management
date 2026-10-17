@@ -137,3 +137,24 @@ export async function createMemberFixture(
     },
   });
 }
+
+export async function createEmployeeFixture(
+  organizationId: string,
+  branchId: string,
+  extra: Record<string, unknown> = {},
+) {
+  return db.employee.create({
+    data: {
+      organizationId,
+      primaryBranchId: branchId,
+      firstName: `Coach${next()}`,
+      lastName: "Test",
+      jobTitle: "Trainer",
+      employmentType: "FULL_TIME",
+      startDate: new Date("2026-01-01T00:00:00Z"),
+      isTrainer: true,
+      currency: "INR",
+      ...extra,
+    } as Parameters<typeof db.employee.create>[0]["data"],
+  });
+}

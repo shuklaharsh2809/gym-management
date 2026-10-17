@@ -419,3 +419,57 @@ export async function recordRenewalLink(
   const { membership } = await loadForUpdate(tx, ctx, previousId);
   await addChange(tx, ctx, membership.id, "RENEWED", { reason: `Renewed as ${newId}` });
 }
+
+export const MEMBERSHIP_LIST_FILTERS = ["current", "expiring", "frozen", "expired", "all"] as const;
+export type MembershipListFilter = (typeof MEMBERSHIP_LIST_FILTERS)[number];
+
+/** Organization-wide membership list for follow-up work (renewals, freezes). */
+export async function listMemberships(
+  db: DbClient,
+  ctx: OrganizationContext,
+  options: { filter: MembershipListFilter; page: number; pageSize: number },
+) {
+  requirePermission(ctx, "members.read");
+  const today = toDbDate(todayIn(ctx.organization.timezone));
+  const in14 = new Date(today.getTime() + 14 * 86_400_000);
+  const filters = {
+    current: {
+      status: { not: "CANCELLED" as const },
+      startDate: { lte: today },
+      endDate: { gte: today },
+    },
+    expiring: { status: { not: "CANCELLED" as const }, endDate: { gte: today, lte: in14 } },
+    frozen: { status: "FROZEN" as const, frozenUntil: { gte: today } },
+    expired: { status: { not: "CANCELLED" as const }, endDate: { lt: today } },
+    all: {},
+  };
+  const where = {
+    organizationId: ctx.organizationId,
+    member: { is: memberScopeWhere(ctx) },
+    ...filters[options.filter],
+  };
+  const total = await db.gymMembership.count({ where });
+  const pageCount = Math.max(1, Math.ceil(total / options.pageSize));
+  const page = Math.min(options.page, pageCount);
+  const rows = await db.gymMembership.findMany({
+    where,
+    orderBy: options.filter === "expired" ? [{ endDate: "desc" }] : [{ endDate: "asc" }],
+    skip: (page - 1) * options.pageSize,
+    take: options.pageSize,
+    include: {
+      member: {
+        select: { id: true, firstName: true, lastName: true, memberNumber: true, phone: true },
+      },
+      branch: { select: { name: true, timezone: true } },
+    },
+  });
+  return {
+    total,
+    page,
+    pageCount,
+    items: rows.map((m) => ({
+      ...m,
+      state: effectiveStatus(toDates(m), todayIn(m.branch.timezone)),
+    })),
+  };
+}

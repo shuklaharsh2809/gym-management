@@ -164,6 +164,17 @@ model Organization {
   invoiceLines       InvoiceLine[]
   refunds            Refund[]
   paymentAttempts    PaymentAttempt[]
+  leads              Lead[]
+  leadActivities     LeadActivity[]
+  followUps          FollowUp[]
+  employees          Employee[]
+  shifts             Shift[]
+  leaveRequests      LeaveRequest[]
+  rooms              Room[]
+  classTypes         ClassType[]
+  classSessions      ClassSession[]
+  bookings           Booking[]
+  trainingSessions   TrainingSession[]
 
   @@map("organizations")
 }
@@ -196,6 +207,12 @@ model Branch {
   invoices           Invoice[]
   payments           Payment[]
   checkIns           CheckIn[]
+  leads              Lead[]
+  employees          Employee[]
+  shifts             Shift[]
+  rooms              Room[]
+  classSessions      ClassSession[]
+  trainingSessions   TrainingSession[]
 
   // Target for composite foreign keys from branch-owned rows.
   @@unique([id, organizationId])
@@ -218,6 +235,9 @@ model OrganizationMembership {
   organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   user              User               @relation(fields: [userId], references: [id], onDelete: Restrict)
   branchAssignments BranchAssignment[]
+  leads             Lead[]
+  followUps         FollowUp[]
+  employee          Employee?
 
   @@unique([organizationId, userId])
   @@unique([id, organizationId])
@@ -350,13 +370,16 @@ model Member {
   createdAt                DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  homeBranch   Branch          @relation(fields: [homeBranchId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  notes        MemberNote[]
-  memberships  GymMembership[]
-  invoices     Invoice[]
-  payments     Payment[]
-  checkIns     CheckIn[]
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  homeBranch       Branch            @relation(fields: [homeBranchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  notes            MemberNote[]
+  memberships      GymMembership[]
+  invoices         Invoice[]
+  payments         Payment[]
+  checkIns         CheckIn[]
+  leads            Lead[]
+  bookings         Booking[]
+  trainingSessions TrainingSession[]
 
   @@unique([id, organizationId])
   @@unique([organizationId, memberNumber])
@@ -487,13 +510,15 @@ model GymMembership {
   createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt            DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  member       Member             @relation(fields: [memberId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  plan         MembershipPlan     @relation(fields: [planId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  branch       Branch             @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  changes      MembershipChange[]
-  invoiceLines InvoiceLine[]
-  checkIns     CheckIn[]
+  organization     Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  member           Member             @relation(fields: [memberId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  plan             MembershipPlan     @relation(fields: [planId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  branch           Branch             @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  changes          MembershipChange[]
+  invoiceLines     InvoiceLine[]
+  checkIns         CheckIn[]
+  bookings         Booking[]
+  trainingSessions TrainingSession[]
 
   @@unique([id, organizationId])
   @@index([organizationId, memberId])
@@ -760,6 +785,367 @@ model CheckIn {
   @@index([organizationId, branchId, checkedInAt])
   @@index([organizationId, memberId, checkedInAt])
   @@map("check_ins")
+}
+
+// ---------------------------------------------------------------------------
+// CRM
+// ---------------------------------------------------------------------------
+
+enum LeadStage {
+  NEW
+  CONTACTED
+  TRIAL_BOOKED
+  TRIAL_COMPLETED
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum LeadSource {
+  WALK_IN
+  WEBSITE
+  REFERRAL
+  PHONE
+  CAMPAIGN
+  SOCIAL
+  OTHER
+}
+
+model Lead {
+  id                String     @id @default(uuid()) @db.Uuid
+  organizationId    String     @map("organization_id") @db.Uuid
+  branchId          String     @map("branch_id") @db.Uuid
+  name              String
+  phone             String?
+  email             String?
+  source            LeadSource
+  stage             LeadStage  @default(NEW)
+  interest          String?
+  ownerMembershipId String?    @map("owner_membership_id") @db.Uuid
+  nextFollowUpAt    DateTime?  @map("next_follow_up_at") @db.Timestamptz(3)
+  lostReason        String?    @map("lost_reason")
+  convertedMemberId String?    @map("converted_member_id") @db.Uuid
+  convertedAt       DateTime?  @map("converted_at") @db.Timestamptz(3)
+  createdById       String?    @map("created_by_id") @db.Uuid
+  createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization    Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branch          Branch                  @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  owner           OrganizationMembership? @relation(fields: [ownerMembershipId], references: [id], onDelete: SetNull)
+  convertedMember Member?                 @relation(fields: [convertedMemberId], references: [id], onDelete: Restrict)
+  activities      LeadActivity[]
+  followUps       FollowUp[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, stage])
+  @@index([organizationId, nextFollowUpAt])
+  @@map("leads")
+}
+
+enum LeadActivityType {
+  NOTE
+  CALL
+  EMAIL
+  MESSAGE
+  VISIT
+  STAGE_CHANGE
+  FOLLOW_UP_DONE
+  CONVERTED
+}
+
+model LeadActivity {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  leadId         String           @map("lead_id") @db.Uuid
+  type           LeadActivityType
+  body           String?
+  fromStage      LeadStage?       @map("from_stage")
+  toStage        LeadStage?       @map("to_stage")
+  actorId        String?          @map("actor_id") @db.Uuid
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  lead         Lead         @relation(fields: [leadId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([organizationId, leadId, createdAt])
+  @@map("lead_activities")
+}
+
+model FollowUp {
+  id                     String    @id @default(uuid()) @db.Uuid
+  organizationId         String    @map("organization_id") @db.Uuid
+  leadId                 String    @map("lead_id") @db.Uuid
+  dueAt                  DateTime  @map("due_at") @db.Timestamptz(3)
+  note                   String?
+  assignedToMembershipId String?   @map("assigned_to_membership_id") @db.Uuid
+  completedAt            DateTime? @map("completed_at") @db.Timestamptz(3)
+  createdById            String?   @map("created_by_id") @db.Uuid
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  lead         Lead                    @relation(fields: [leadId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  assignedTo   OrganizationMembership? @relation(fields: [assignedToMembershipId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, dueAt])
+  @@map("follow_ups")
+}
+
+// ---------------------------------------------------------------------------
+// Workforce
+// ---------------------------------------------------------------------------
+
+enum EmploymentStatus {
+  ACTIVE
+  ON_LEAVE
+  TERMINATED
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACTOR
+}
+
+/// A staff record. May or may not have a FitGrid login (membershipId).
+model Employee {
+  id                 String           @id @default(uuid()) @db.Uuid
+  organizationId     String           @map("organization_id") @db.Uuid
+  primaryBranchId    String           @map("primary_branch_id") @db.Uuid
+  membershipId       String?          @unique @map("membership_id") @db.Uuid
+  firstName          String           @map("first_name")
+  lastName           String           @map("last_name")
+  email              String?
+  phone              String?
+  jobTitle           String           @map("job_title")
+  employmentType     EmploymentType   @map("employment_type")
+  status             EmploymentStatus @default(ACTIVE)
+  startDate          DateTime         @map("start_date") @db.Date
+  endDate            DateTime?        @map("end_date") @db.Date
+  isTrainer          Boolean          @default(false) @map("is_trainer")
+  specializations    String[]         @default([])
+  bio                String?
+  /// Sensitive: requires staff.compensation.read.
+  monthlySalaryMinor Int?             @map("monthly_salary_minor")
+  /// Sensitive: requires staff.compensation.read.
+  commissionBps      Int?             @map("commission_bps")
+  currency           String           @db.Char(3)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization     Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  primaryBranch    Branch                  @relation(fields: [primaryBranchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  membership       OrganizationMembership? @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  shifts           Shift[]
+  leaveRequests    LeaveRequest[]
+  classSessions    ClassSession[]
+  trainingSessions TrainingSession[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@map("employees")
+}
+
+model Shift {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  employeeId     String   @map("employee_id") @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
+  startsAt       DateTime @map("starts_at") @db.Timestamptz(3)
+  endsAt         DateTime @map("ends_at") @db.Timestamptz(3)
+  note           String?
+  createdById    String?  @map("created_by_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  employee     Employee     @relation(fields: [employeeId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  branch       Branch       @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([organizationId, branchId, startsAt])
+  @@index([organizationId, employeeId, startsAt])
+  @@map("shifts")
+}
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  UNPAID
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model LeaveRequest {
+  id             String      @id @default(uuid()) @db.Uuid
+  organizationId String      @map("organization_id") @db.Uuid
+  employeeId     String      @map("employee_id") @db.Uuid
+  type           LeaveType
+  startDate      DateTime    @map("start_date") @db.Date
+  endDate        DateTime    @map("end_date") @db.Date
+  reason         String?
+  status         LeaveStatus @default(PENDING)
+  decidedById    String?     @map("decided_by_id") @db.Uuid
+  decidedAt      DateTime?   @map("decided_at") @db.Timestamptz(3)
+  decisionNote   String?     @map("decision_note")
+  createdById    String?     @map("created_by_id") @db.Uuid
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  employee     Employee     @relation(fields: [employeeId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([organizationId, status])
+  @@map("leave_requests")
+}
+
+// ---------------------------------------------------------------------------
+// Scheduling: rooms, classes, bookings, personal training
+// ---------------------------------------------------------------------------
+
+enum RecordStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+model Room {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  branchId       String       @map("branch_id") @db.Uuid
+  name           String
+  capacity       Int
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branch       Branch         @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  sessions     ClassSession[]
+
+  @@unique([id, organizationId])
+  @@unique([branchId, name])
+  @@map("rooms")
+}
+
+model ClassType {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  name            String
+  description     String?
+  durationMinutes Int          @map("duration_minutes")
+  defaultCapacity Int          @map("default_capacity")
+  color           String       @default("#047857")
+  status          RecordStatus @default(ACTIVE)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  sessions     ClassSession[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, name])
+  @@map("class_types")
+}
+
+enum SessionStatus {
+  SCHEDULED
+  CANCELLED
+}
+
+model ClassSession {
+  id              String        @id @default(uuid()) @db.Uuid
+  organizationId  String        @map("organization_id") @db.Uuid
+  branchId        String        @map("branch_id") @db.Uuid
+  classTypeId     String        @map("class_type_id") @db.Uuid
+  roomId          String?       @map("room_id") @db.Uuid
+  trainerId       String?       @map("trainer_id") @db.Uuid
+  startsAt        DateTime      @map("starts_at") @db.Timestamptz(3)
+  endsAt          DateTime      @map("ends_at") @db.Timestamptz(3)
+  capacity        Int
+  status          SessionStatus @default(SCHEDULED)
+  seriesId        String?       @map("series_id") @db.Uuid
+  cancelledReason String?       @map("cancelled_reason")
+  createdById     String?       @map("created_by_id") @db.Uuid
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branch       Branch       @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  classType    ClassType    @relation(fields: [classTypeId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  room         Room?        @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  trainer      Employee?    @relation(fields: [trainerId], references: [id], onDelete: Restrict)
+  bookings     Booking[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, branchId, startsAt])
+  @@index([trainerId, startsAt])
+  @@map("class_sessions")
+}
+
+enum BookingStatus {
+  BOOKED
+  WAITLISTED
+  CANCELLED
+  ATTENDED
+  NO_SHOW
+}
+
+model Booking {
+  id               String        @id @default(uuid()) @db.Uuid
+  organizationId   String        @map("organization_id") @db.Uuid
+  sessionId        String        @map("session_id") @db.Uuid
+  memberId         String        @map("member_id") @db.Uuid
+  status           BookingStatus
+  waitlistPosition Int?          @map("waitlist_position")
+  /// Class pack the session was paid from, if any.
+  membershipId     String?       @map("membership_id") @db.Uuid
+  creditConsumed   Boolean       @default(false) @map("credit_consumed")
+  bookedAt         DateTime      @default(now()) @map("booked_at") @db.Timestamptz(3)
+  cancelledAt      DateTime?     @map("cancelled_at") @db.Timestamptz(3)
+  createdById      String?       @map("created_by_id") @db.Uuid
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  session      ClassSession   @relation(fields: [sessionId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  member       Member         @relation(fields: [memberId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  membership   GymMembership? @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, sessionId, status])
+  @@index([organizationId, memberId])
+  @@map("bookings")
+}
+
+enum TrainingSessionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+/// One-to-one personal training appointment.
+model TrainingSession {
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  branchId       String                @map("branch_id") @db.Uuid
+  memberId       String                @map("member_id") @db.Uuid
+  trainerId      String                @map("trainer_id") @db.Uuid
+  startsAt       DateTime              @map("starts_at") @db.Timestamptz(3)
+  endsAt         DateTime              @map("ends_at") @db.Timestamptz(3)
+  status         TrainingSessionStatus @default(SCHEDULED)
+  membershipId   String?               @map("membership_id") @db.Uuid
+  creditConsumed Boolean               @default(false) @map("credit_consumed")
+  notes          String?
+  createdById    String?               @map("created_by_id") @db.Uuid
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branch       Branch         @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  member       Member         @relation(fields: [memberId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  trainer      Employee       @relation(fields: [trainerId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  membership   GymMembership? @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, trainerId, startsAt])
+  @@index([organizationId, memberId])
+  @@map("training_sessions")
 }
 
 // ---------------------------------------------------------------------------

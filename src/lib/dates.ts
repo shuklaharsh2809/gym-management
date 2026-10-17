@@ -75,15 +75,34 @@ export function dayBounds(day: DateOnly, timeZone: string): { start: Date; end: 
 }
 
 function zonedMidnight(day: DateOnly, timeZone: string): Date {
-  // Start from UTC midnight and correct by the zone's offset; iterate to settle across DST.
-  let guess = toDbDate(day).getTime();
+  return zonedDateTime(day, "00:00", timeZone);
+}
+
+/**
+ * Instant for a wall-clock time ("HH:MM") on a local day in a time zone. Times that don't
+ * exist (skipped by a DST jump) resolve to the instant just after the jump.
+ */
+export function zonedDateTime(day: DateOnly, time: string, timeZone: string): Date {
+  const [h, m] = time.split(":").map(Number) as [number, number];
+  const wallAsUtc = toDbDate(day).getTime() + (h * 60 + m) * 60_000;
+  // Start from the wall time read as UTC and correct by the zone's offset; iterate to settle across DST.
+  let guess = wallAsUtc;
   for (let i = 0; i < 3; i++) {
-    const offset = tzOffsetMs(new Date(guess), timeZone);
-    const next = toDbDate(day).getTime() - offset;
+    const next = wallAsUtc - tzOffsetMs(new Date(guess), timeZone);
     if (next === guess) break;
     guess = next;
   }
   return new Date(guess);
+}
+
+/** Local wall-clock "HH:MM" of an instant in a time zone. */
+export function localTime(instant: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(instant);
 }
 
 function tzOffsetMs(instant: Date, timeZone: string): number {

@@ -6,7 +6,7 @@ import { uuidSchema } from "@/lib/validation";
 import { recordAudit } from "@/modules/audit/audit";
 import { effectiveStatus } from "@/modules/memberships/lifecycle";
 import { nextNumber } from "@/modules/sequences/sequences";
-import type { Database, DbClient } from "@/server/database/client";
+import type { Database, DbClient, TransactionClient } from "@/server/database/client";
 import type { OrganizationContext } from "@/server/authorization/context";
 import {
   hasPermission,
@@ -256,37 +256,44 @@ function memberData(input: MemberInput) {
   };
 }
 
-export async function createMember(db: Database, ctx: OrganizationContext, input: MemberInput) {
+/** Validate and create a member inside an existing transaction. */
+export async function createMemberInTx(
+  tx: TransactionClient,
+  ctx: OrganizationContext,
+  input: MemberInput,
+) {
   requirePermission(ctx, "members.create");
-  await assertHomeBranch(db, ctx, input.homeBranchId);
+  await assertHomeBranch(tx, ctx, input.homeBranchId);
   if (!input.confirmDuplicate) {
-    const duplicates = await findDuplicateMembers(db, ctx, input);
+    const duplicates = await findDuplicateMembers(tx, ctx, input);
     if (duplicates.length) throw new DuplicateMemberError(duplicates);
   }
-  return db.$transaction(async (tx) => {
-    const memberNumber = await nextNumber(tx, ctx.organizationId, "member");
-    const member = await tx.member.create({
-      data: {
-        ...memberData(input),
-        medicalNotes: hasPermission(ctx, "members.sensitive.read")
-          ? (input.medicalNotes ?? null)
-          : null,
-        organizationId: ctx.organizationId,
-        memberNumber,
-        createdById: ctx.userId,
-      },
-      select: { id: true, memberNumber: true },
-    });
-    await recordAudit(tx, {
+  const memberNumber = await nextNumber(tx, ctx.organizationId, "member");
+  const member = await tx.member.create({
+    data: {
+      ...memberData(input),
+      medicalNotes: hasPermission(ctx, "members.sensitive.read")
+        ? (input.medicalNotes ?? null)
+        : null,
       organizationId: ctx.organizationId,
-      actorUserId: ctx.userId,
-      action: "member.created",
-      entityType: "member",
-      entityId: member.id,
-      metadata: { memberNumber, duplicateConfirmed: input.confirmDuplicate },
-    });
-    return member;
+      memberNumber,
+      createdById: ctx.userId,
+    },
+    select: { id: true, memberNumber: true },
   });
+  await recordAudit(tx, {
+    organizationId: ctx.organizationId,
+    actorUserId: ctx.userId,
+    action: "member.created",
+    entityType: "member",
+    entityId: member.id,
+    metadata: { memberNumber, duplicateConfirmed: input.confirmDuplicate },
+  });
+  return member;
+}
+
+export async function createMember(db: Database, ctx: OrganizationContext, input: MemberInput) {
+  return db.$transaction((tx) => createMemberInTx(tx, ctx, input));
 }
 
 export async function updateMember(
