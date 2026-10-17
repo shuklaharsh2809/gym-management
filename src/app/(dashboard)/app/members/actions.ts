@@ -1,6 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { isDateOnly, toDbDate } from "@/lib/dates";
+import { ValidationError } from "@/lib/errors";
+import { uploadMemberDocument } from "@/modules/documents/service";
+
 import { redirect } from "next/navigation";
 import { memberInputSchema, memberNoteSchema } from "@/modules/members/schemas";
 import {
@@ -241,4 +246,43 @@ export async function cancelMembershipAction(
   formData: FormData,
 ) {
   return cancel(membershipId, memberId, prev, formData);
+}
+
+export async function uploadDocumentAction(
+  memberId: string,
+  _prev: State,
+  formData: FormData,
+): Promise<ActionResult<unknown>> {
+  const ctx = await requireOrganizationContext();
+  const result = await runAction(
+    "document.upload",
+    async () => {
+      const file = formData.get("file");
+      if (!(file instanceof File))
+        throw new ValidationError("Please correct the highlighted fields.", {
+          file: ["Choose a file"],
+        });
+      const input = parseInput(
+        z.object({
+          kind: z.enum(["WAIVER", "CONSENT", "ID_PROOF", "MEDICAL", "OTHER"]),
+          title: z.string().trim().min(2, "Add a title").max(120),
+          sensitive: z.preprocess((v) => v === "on", z.boolean()),
+          signedAt: z.preprocess(
+            (v) => (v === "" ? undefined : v),
+            z.string().refine(isDateOnly, "Enter a valid date").optional(),
+          ),
+        }),
+        formDataToObject(formData),
+      );
+      await uploadMemberDocument(db, ctx, memberId, {
+        ...input,
+        signedAt: input.signedAt ? toDbDate(input.signedAt) : undefined,
+        fileName: file.name,
+        bytes: new Uint8Array(await file.arrayBuffer()),
+      });
+    },
+    "Document uploaded.",
+  );
+  if (result.ok) revalidatePath(`/app/members/${memberId}`);
+  return result;
 }
