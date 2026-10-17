@@ -5,6 +5,7 @@
 | Variable                          | Notes                                                                                                             |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`                    | Postgres 17. Use a pooled URL in serverless environments.                                                         |
+| `DATABASE_URL_UNPOOLED`           | Optional direct connection for migrations (Neon sets it). Falls back to `DATABASE_URL`.                           |
 | `TEST_DATABASE_URL`               | Only for tests. Erased by the test suite.                                                                         |
 | `BETTER_AUTH_SECRET`              | ≥ 32 random chars. Rotating it signs everyone out.                                                                |
 | `BETTER_AUTH_URL`                 | Public base URL (used in emails and payment checkout links).                                                      |
@@ -14,15 +15,29 @@
 
 All are validated at startup (`src/lib/env.ts`).
 
-## Deploying (e.g. Vercel)
+## Deploying to Vercel + Neon
 
-1. Provision Postgres (e.g. Neon via the Vercel Marketplace) and set the variables above.
-2. Run migrations as a release step: `npx prisma migrate deploy` (never `migrate dev` or `reset` in production).
-3. Build: `npm run build`. The app is a standard Next.js 16 deployment (Node.js runtime).
-4. `vercel.json` schedules the daily job (00:30 UTC) and the job runner (every 10 minutes). On plans with
-   limited cron frequency, run the job runner from another scheduler with the same bearer token.
-5. Do **not** run `npm run db:seed` in production (it refuses when `NODE_ENV=production`).
-6. Rate limiting identifies clients by `x-forwarded-for`; deploy only behind a proxy that sets it (Vercel does).
+1. **Import the repo** at vercel.com/new (framework: Next.js; no build settings to change).
+2. **Add Postgres:** Project → Storage → Neon. It sets `DATABASE_URL` (pooled, used by the app) and
+   `DATABASE_URL_UNPOOLED` (direct, used by migrations via `prisma.config.ts`).
+3. **Set variables** (Production): `BETTER_AUTH_SECRET`, `PAYMENTS_SANDBOX_WEBHOOK_SECRET`, `CRON_SECRET`
+   (each `openssl rand -base64 32`), `BETTER_AUTH_URL` = the production URL, e.g. `https://<project>.vercel.app`,
+   and `EMAIL_TRANSPORT=console`.
+4. **Deploy.** Vercel runs `npm run vercel-build` = `prisma migrate deploy && next build`, so pending
+   migrations are applied before each release (never `migrate dev` or `reset` in production).
+5. **Scheduled work.** `vercel.json` runs `/api/cron/daily` at 00:30 UTC (Hobby plans allow daily crons only);
+   it queues the day's work and drains the job queue. For faster webhook/notification delivery, call
+   `POST /api/jobs/run` every few minutes from any scheduler with `Authorization: Bearer $CRON_SECRET`,
+   or add a `*/10 * * * *` cron on a Pro plan.
+6. **Demo deployments only:** seed once from your machine against the direct URL. Set a private
+   platform-admin password, because the demo password is published in this repo:
+   `DATABASE_URL=<unpooled url> SEED_PLATFORM_ADMIN_PASSWORD=<secret> npm run db:seed`.
+   Never seed a deployment that holds real customers (the seed also refuses under `NODE_ENV=production`).
+7. Rate limiting identifies clients by `x-forwarded-for`; deploy only behind a proxy that sets it (Vercel does).
+8. Verify: `GET /api/health` returns `{"status":"ok","database":"ok"}`.
+
+Emails go to the function logs (`EMAIL_TRANSPORT=console`), so password-reset and invitation links on a
+deployed site are only visible in Vercel's logs until a real email provider is added.
 
 ## Monitoring
 

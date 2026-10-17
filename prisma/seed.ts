@@ -12,6 +12,14 @@ import { seedFacilities, seedOperations, seedTeamAndSchedule } from "./seed-oper
 
 export const DEMO_PASSWORD = "FitGrid-demo-2026";
 
+/**
+ * The platform admin can see every organization, so on a publicly reachable demo it must not use
+ * the published demo password. Set SEED_PLATFORM_ADMIN_PASSWORD (12+ chars) when seeding one.
+ */
+const PLATFORM_ADMIN_PASSWORD = process.env.SEED_PLATFORM_ADMIN_PASSWORD || DEMO_PASSWORD;
+if (PLATFORM_ADMIN_PASSWORD.length < 12)
+  throw new Error("SEED_PLATFORM_ADMIN_PASSWORD must be at least 12 characters");
+
 const db = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
 });
@@ -128,8 +136,15 @@ async function main() {
     throw new Error("Refusing to seed demo data in production");
 
   const passwordHash = await hashPassword(DEMO_PASSWORD);
+  const adminPasswordHash =
+    PLATFORM_ADMIN_PASSWORD === DEMO_PASSWORD
+      ? passwordHash
+      : await hashPassword(PLATFORM_ADMIN_PASSWORD);
   const userIds = new Map<string, string>();
-  for (const u of users) userIds.set(u.key, (await upsertUser(u, passwordHash)).id);
+  for (const u of users) {
+    const hash = u.platformRole === "ADMIN" ? adminPasswordHash : passwordHash;
+    userIds.set(u.key, (await upsertUser(u, hash)).id);
+  }
 
   for (const org of organizations) {
     if (await db.organization.findUnique({ where: { slug: org.slug } })) {
@@ -227,8 +242,14 @@ async function main() {
     await runDailyForOrganization(db as never, record.id, todayIn(record.timezone));
   }
 
-  console.log(`\nDemo accounts (password for all: ${DEMO_PASSWORD}):`);
-  for (const u of users) console.log(`  ${u.email.padEnd(34)} ${u.name}`);
+  console.log(`\nDemo accounts (password: ${DEMO_PASSWORD}):`);
+  for (const u of users) {
+    const note =
+      u.platformRole === "ADMIN" && PLATFORM_ADMIN_PASSWORD !== DEMO_PASSWORD
+        ? " (password: SEED_PLATFORM_ADMIN_PASSWORD)"
+        : "";
+    console.log(`  ${u.email.padEnd(34)} ${u.name}${note}`);
+  }
 }
 
 main()

@@ -3,7 +3,7 @@ import { testDatabaseUrl } from "../integration/test-database";
 
 export default function globalSetup() {
   const url = testDatabaseUrl();
-  const env = { ...process.env, DATABASE_URL: url };
+  const env = { ...process.env, DATABASE_URL: url, DATABASE_URL_UNPOOLED: url };
   execFileSync("npx", ["prisma", "migrate", "deploy"], { env, stdio: "pipe" });
   // Empty every application table (keeps the migrations table).
   const sql = `DO $$ DECLARE r record; BEGIN
