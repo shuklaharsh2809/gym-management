@@ -15,15 +15,16 @@ src/
     (marketing)/         Public pages
     (auth)/              login, register, forgot/reset password
     onboarding/          Create organization + first branch
+    invite/[token]/      Public invitation accept page
     (dashboard)/app/     Authenticated organization app (/app/...)
     api/auth/[...all]/   Better Auth HTTP handler
   components/
     ui/                  Primitives (Button, Input, Select, Card, Badge, Alert, DropdownMenu, Sheet…)
     shared/              Cross-feature patterns (FormField, PageHeader, EmptyState, SubmitButton…)
     layouts/             App shell (sidebar, topbar, switchers)
-    business/            Domain widgets (LocationFields, BranchStatusBadge)
+    business/            Domain widgets (LocationFields, AccessFields, BranchStatusBadge)
   modules/               Domain services: business rules + data access
-    organizations/  branches/  team/  audit/
+    organizations/  branches/  team/  invitations/  audit/
   server/
     auth/                Better Auth config, session + active-scope helpers (server-only)
     authorization/       Permissions, context resolution, guards

@@ -9,13 +9,21 @@ export type AuditAction =
   | "branch.deactivated"
   | "branch.reactivated"
   | "team.branch_assigned"
-  | "team.branch_unassigned";
+  | "team.branch_unassigned"
+  | "team.member_updated"
+  | "team.member_suspended"
+  | "team.member_reactivated"
+  | "team.member_revoked"
+  | "invitation.created"
+  | "invitation.resent"
+  | "invitation.revoked"
+  | "invitation.accepted";
 
 export interface AuditEvent {
   organizationId: string | null;
   actorUserId: string | null;
   action: AuditAction;
-  entityType: "organization" | "branch" | "organization_membership";
+  entityType: "organization" | "branch" | "organization_membership" | "invitation";
   entityId?: string;
   /** Non-sensitive context only. Never include secrets or personal/financial details. */
   metadata?: Prisma.InputJsonObject;

@@ -1,10 +1,7 @@
-import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { Logo } from "@/components/shared/logo";
-import { getSessionUser } from "@/server/auth/session";
 
-export default async function AuthLayout({ children }: { children: ReactNode }) {
-  if (await getSessionUser()) redirect("/app");
+export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="grid min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
       <aside className="hidden flex-col justify-between bg-brand p-10 text-white lg:flex">

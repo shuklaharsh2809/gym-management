@@ -160,6 +160,14 @@ export default async function DashboardPage() {
                 ))}
               </ol>
             )}
+            {activity && activity.length > 0 && (
+              <Link
+                href="/app/settings/audit-logs"
+                className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
+              >
+                View full audit log
+              </Link>
+            )}
           </CardContent>
         </Card>
       </div>

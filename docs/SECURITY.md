@@ -23,8 +23,9 @@
 | Branch assignment can't cross tenants                              | composite FKs                                                     | `rejects a branch assignment that pairs…`                     |
 | Platform admin is a separate boundary                              | `requirePlatformAdmin`                                            | unit test                                                     |
 
-Mutation check (2026-10-17): deliberately removing the branch-scope check or the
-`organizationId` filter makes the integration suite fail (3 and 2 failures respectively).
+Mutation checks (2026-10-17): deliberately removing the branch-scope check, the
+`organizationId` filter, the invitation email match or the no-self-edit rule each makes the
+integration suite fail.
 
 ## Authentication
 
@@ -41,7 +42,9 @@ other sessions revoked on reset, HTTP-only session cookies, built-in rate limiti
   transport is for development.
 - Secrets live only in environment variables. `.env` is git-ignored; `.env.example` has
   placeholders.
-- Destructive deletion is avoided: branches are deactivated, memberships revoked.
+- Destructive deletion is avoided: branches are deactivated, memberships revoked
+  (rows kept), invitations cancelled.
+- `/invite/[token]` sends `Referrer-Policy: no-referrer` so the token isn't leaked.
 
 ## Known gaps (tracked in ROADMAP)
 
@@ -49,5 +52,8 @@ other sessions revoked on reset, HTTP-only session cookies, built-in rate limiti
 - Email verification not enforced; no real email delivery.
 - Rate-limit storage is in-memory (not safe across multiple instances).
 - PostgreSQL row-level security not yet enabled (defence in depth).
-- No invitations yet; team members can only be created by the seed.
-- Audit log has no viewer beyond the dashboard summary, and no retention policy.
+- Rate limiting identifies clients by `x-forwarded-for`; deploy only behind a proxy that
+  sets it (otherwise it can be spoofed to evade limits). E2E tests send a distinct value
+  per simulated user.
+- Invitation links are shown to the inviter and logged by the console email transport.
+- Audit log has no retention policy or export yet.

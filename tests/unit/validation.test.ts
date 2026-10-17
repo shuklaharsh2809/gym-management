@@ -94,3 +94,21 @@ describe("time zone options", () => {
     for (const m of MARKETS) expect(zones, m.timezone).toContain(m.timezone);
   });
 });
+
+describe("post-login redirect", () => {
+  it("allows only same-origin relative paths", async () => {
+    const { safeNextPath } = await import("@/lib/redirects");
+    expect(safeNextPath("/invite/abc", "/app")).toBe("/invite/abc");
+    expect(safeNextPath("/app?x=1", "/app")).toBe("/app?x=1");
+    for (const bad of [
+      "//evil.example",
+      "https://evil.example",
+      "/\\evil.example",
+      "javascript:alert(1)",
+      "",
+      null,
+    ]) {
+      expect(safeNextPath(bad, "/app"), String(bad)).toBe("/app");
+    }
+  });
+});

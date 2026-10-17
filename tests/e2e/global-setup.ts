@@ -7,7 +7,7 @@ export default function globalSetup() {
   execFileSync("npx", ["prisma", "migrate", "deploy"], { env, stdio: "pipe" });
   execFileSync("npx", ["prisma", "db", "execute", "--stdin"], {
     env,
-    input: `TRUNCATE TABLE audit_logs, branch_assignments, organization_memberships, branches,
+    input: `TRUNCATE TABLE audit_logs, invitation_branches, invitations, branch_assignments, organization_memberships, branches,
         organizations, verifications, accounts, sessions, users CASCADE;`,
     stdio: ["pipe", "pipe", "pipe"],
   });

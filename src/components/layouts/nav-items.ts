@@ -1,4 +1,4 @@
-import { Building2, LayoutDashboard, MapPin, Users, type LucideIcon } from "lucide-react";
+import { Building2, History, LayoutDashboard, MapPin, Users, type LucideIcon } from "lucide-react";
 import type { Permission } from "@/server/authorization/permissions";
 
 export interface NavItem {
@@ -29,6 +29,17 @@ export const NAV_SECTIONS: NavSection[] = [
         permission: "branches.read",
       },
       { href: "/app/organization/team", label: "Team", icon: Users, permission: "team.read" },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [
+      {
+        href: "/app/settings/audit-logs",
+        label: "Audit log",
+        icon: History,
+        permission: "audit.read",
+      },
     ],
   },
 ];
