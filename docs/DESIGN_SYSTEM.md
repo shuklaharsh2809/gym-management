@@ -86,9 +86,25 @@ row there when introducing a new combination.
 | Charts                         | `business/charts.tsx`  | Recharts bar/line/hour charts using token colors                                 |
 | NotificationsBell              | `layouts/`             | Unread count, mark-read                                                          |
 | Marketing blocks               | `shared/marketing.tsx` | Hero, FeatureGrid, Section, Prose                                                |
+| Photo, PhotoCard, PhotoThumb   | `business/photo.tsx`   | Gym photography with a navy scrim; initials avatars for people                   |
 
 Accessibility is checked automatically: `tests/e2e/accessibility-platform.spec.ts` runs axe
 (WCAG 2.0/2.1/2.2 A and AA) on public pages and core app screens.
+
+## Imagery
+
+FitGrid should look like a gym product, not a generic dashboard. Photography sets that context:
+
+- **Where:** the marketing heroes and closing call to action, the sign-in panel, the dashboard welcome banner,
+  front desk branch cards and class thumbnails. Data-dense screens (tables, forms, finance) stay photo-free.
+- **Source:** `src/lib/imagery.ts` is the only catalogue. Files live in `src/assets/images/` and are
+  bundled with `next/image`, so they're optimized, blur-placeholdered and served from our origin
+  (CSP keeps `img-src 'self'`). Licences are listed in `src/assets/images/CREDITS.md` (Unsplash License).
+- **Text on photos:** always place it on the navy scrim (`PhotoBackdrop`), never directly on the image,
+  so contrast meets WCAG AA. Decorative photos use `alt=""`; content photos use the catalogue `alt`.
+- **People:** members and staff get initials avatars (`InitialsAvatar`), never stock faces, so a
+  real person is never shown as someone they aren't.
+- **Logo:** the mark is a dumbbell on emerald (`shared/logo.tsx`, `app/icon.svg`).
 
 ## Not yet built
 
