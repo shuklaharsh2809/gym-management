@@ -19,6 +19,8 @@ import { requireOrganizationContext } from "@/server/auth/session";
 import { hasPermission } from "@/server/authorization/guards";
 import { db } from "@/server/database/client";
 import { createClassTypeAction, createRoomAction, scheduleClassesAction } from "./actions";
+import { PhotoThumb } from "@/components/business/photo";
+import { classPhoto } from "@/lib/imagery";
 
 export const metadata: Metadata = { title: "Classes" };
 
@@ -100,6 +102,10 @@ export default async function ClassesPage({
                           className="h-10 w-1 rounded-full"
                           style={{ backgroundColor: s.classType.color }}
                           aria-hidden
+                        />
+                        <PhotoThumb
+                          photo={classPhoto(s.classType.name)}
+                          className="hidden size-12 sm:block"
                         />
                         <span className="w-24 shrink-0 text-sm tabular-nums">
                           {localTime(s.startsAt, s.branch.timezone)}–
