@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { addDays, addMonths, dayBounds, daysBetween, isDateOnly, localDate } from "@/lib/dates";
+import {
+  addDays,
+  addMonths,
+  dayBounds,
+  daysBetween,
+  isDateOnly,
+  localDate,
+  localTime,
+  zonedDateTime,
+} from "@/lib/dates";
 import {
   computeLine,
   currencyDigits,
@@ -110,6 +119,27 @@ describe("dates", () => {
     expect(autumn.end.getTime() - autumn.start.getTime()).toBe(25 * 3600_000);
     const india = dayBounds("2026-10-17", "Asia/Kolkata");
     expect(india.start.toISOString()).toBe("2026-10-16T18:30:00.000Z");
+  });
+});
+
+describe("zoned wall-clock times", () => {
+  it("converts local times to instants, including on DST days", () => {
+    expect(zonedDateTime("2026-10-17", "06:30", "Asia/Kolkata").toISOString()).toBe(
+      "2026-10-17T01:00:00.000Z",
+    );
+    expect(zonedDateTime("2026-03-29", "09:00", "Europe/London").toISOString()).toBe(
+      "2026-03-29T08:00:00.000Z",
+    );
+    expect(zonedDateTime("2026-03-28", "09:00", "Europe/London").toISOString()).toBe(
+      "2026-03-28T09:00:00.000Z",
+    );
+    expect(zonedDateTime("2026-10-25", "18:00", "Europe/London").toISOString()).toBe(
+      "2026-10-25T18:00:00.000Z",
+    );
+    expect(zonedDateTime("2026-03-08", "10:00", "America/New_York").toISOString()).toBe(
+      "2026-03-08T14:00:00.000Z",
+    );
+    expect(localTime(new Date("2026-10-17T01:00:00Z"), "Asia/Kolkata")).toBe("06:30");
   });
 });
 
