@@ -13,6 +13,7 @@ import type { Database, DbClient, TransactionClient } from "@/server/database/cl
 import type { OrganizationContext } from "@/server/authorization/context";
 import { requirePermission } from "@/server/authorization/guards";
 import type { MembershipSaleInput, PaymentInput, RefundInput } from "./schemas";
+import { emitEvent } from "@/modules/integrations/webhooks";
 
 function isUniqueViolation(error: unknown, field?: string) {
   return (
@@ -193,6 +194,14 @@ export async function recordPaymentInTx(
     entityType: "payment",
     entityId: payment.id,
     metadata: { invoiceId: invoice.id, amountMinor: input.amountMinor, method: input.method },
+  });
+  await emitEvent(tx, ctx.organizationId, "payment.recorded", {
+    paymentId: payment.id,
+    invoiceId: invoice.id,
+    receiptNumber,
+    amountMinor: input.amountMinor,
+    currency: invoice.currency,
+    method: input.method,
   });
   return { payment, duplicate: false };
 }
