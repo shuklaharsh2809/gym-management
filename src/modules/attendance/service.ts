@@ -21,13 +21,7 @@ async function loadBranch(db: DbClient, ctx: OrganizationContext, branchId: stri
   return branch;
 }
 
-async function eligibilityFor(
-  db: DbClient,
-  ctx: OrganizationContext,
-  memberIds: string[],
-  branchId: string,
-  today: DateOnly,
-) {
+async function eligibilityFor(db: DbClient, ctx: OrganizationContext, memberIds: string[]) {
   const memberships = await db.gymMembership.findMany({
     where: { organizationId: ctx.organizationId, memberId: { in: memberIds } },
     select: {
@@ -116,8 +110,6 @@ export async function searchForCheckIn(
     db,
     ctx,
     members.map((m) => m.id),
-    branch.id,
-    today,
   );
   return {
     branch,
@@ -179,7 +171,7 @@ export async function checkInMember(
       };
 
     const today = todayIn(branch.timezone, now);
-    const memberships = await eligibilityFor(tx, ctx, [member.id], branch.id, today);
+    const memberships = await eligibilityFor(tx, ctx, [member.id]);
     const eligibility = checkInEligibility(
       member,
       memberships.get(member.id) ?? [],
