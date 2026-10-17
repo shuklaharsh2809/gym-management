@@ -1,6 +1,7 @@
 "use client";
 
 import { LogOut } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
@@ -25,10 +26,12 @@ export function UserMenu({
   name,
   email,
   roleLabel,
+  isPlatformAdmin = false,
 }: {
   name: string;
   email: string;
   roleLabel: string;
+  isPlatformAdmin?: boolean;
 }) {
   const router = useRouter();
 
@@ -40,11 +43,9 @@ export function UserMenu({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        className="flex size-10 items-center justify-center rounded-full bg-brand text-sm font-semibold text-white"
-        aria-label={`Account menu for ${name}`}
-      >
-        {initials(name)}
+      <DropdownMenuTrigger className="flex size-10 items-center justify-center rounded-full bg-brand text-sm font-semibold text-white">
+        <span aria-hidden>{initials(name)}</span>
+        <span className="sr-only">Account menu for {name}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel className="flex flex-col gap-0.5 text-foreground">
@@ -53,6 +54,11 @@ export function UserMenu({
           <span className="font-normal text-muted-foreground">{roleLabel}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {isPlatformAdmin && (
+          <DropdownMenuItem asChild>
+            <Link href="/platform">Platform admin</Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onSelect={signOut}>
           <LogOut aria-hidden /> Sign out
         </DropdownMenuItem>
