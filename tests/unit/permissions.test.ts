@@ -30,6 +30,8 @@ function ctx(role: OrganizationRole, branchIds?: string[]): OrganizationContext 
       currency: "INR",
       locale: "en-IN",
       isDemo: false,
+      memberVisibility: "ORGANIZATION",
+      checkInDuplicateWindowMinutes: 180,
     },
     membershipId: "m",
     role,

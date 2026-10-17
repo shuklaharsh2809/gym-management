@@ -128,18 +128,22 @@ enum BranchAccessScope {
 }
 
 model Organization {
-  id          String             @id @default(uuid()) @db.Uuid
-  name        String
-  slug        String             @unique
-  legalName   String?            @map("legal_name")
-  countryCode String             @map("country_code") @db.Char(2)
-  timezone    String
-  currency    String             @db.Char(3)
-  locale      String
-  status      OrganizationStatus @default(ACTIVE)
-  isDemo      Boolean            @default(false) @map("is_demo")
-  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                            String             @id @default(uuid()) @db.Uuid
+  name                          String
+  slug                          String             @unique
+  legalName                     String?            @map("legal_name")
+  countryCode                   String             @map("country_code") @db.Char(2)
+  timezone                      String
+  currency                      String             @db.Char(3)
+  locale                        String
+  status                        OrganizationStatus @default(ACTIVE)
+  isDemo                        Boolean            @default(false) @map("is_demo")
+  /// Whether branch-restricted staff can see members whose home branch they aren't assigned to.
+  memberVisibility              MemberVisibility   @default(ORGANIZATION) @map("member_visibility")
+  /// A repeat check-in within this window (without check-out) is treated as a duplicate.
+  checkInDuplicateWindowMinutes Int                @default(180) @map("check_in_duplicate_window_minutes")
+  createdAt                     DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   branches           Branch[]
   memberships        OrganizationMembership[]
@@ -147,6 +151,19 @@ model Organization {
   auditLogs          AuditLog[]
   invitations        Invitation[]
   invitationBranches InvitationBranch[]
+  members            Member[]
+  planBranches       PlanBranch[]
+  gymMemberships     GymMembership[]
+  invoices           Invoice[]
+  payments           Payment[]
+  checkIns           CheckIn[]
+  sequences          OrganizationSequence[]
+  memberNotes        MemberNote[]
+  plans              MembershipPlan[]
+  membershipChanges  MembershipChange[]
+  invoiceLines       InvoiceLine[]
+  refunds            Refund[]
+  paymentAttempts    PaymentAttempt[]
 
   @@map("organizations")
 }
@@ -173,6 +190,12 @@ model Branch {
   organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   assignments        BranchAssignment[]
   invitationBranches InvitationBranch[]
+  members            Member[]
+  planBranches       PlanBranch[]
+  gymMemberships     GymMembership[]
+  invoices           Invoice[]
+  payments           Payment[]
+  checkIns           CheckIn[]
 
   // Target for composite foreign keys from branch-owned rows.
   @@unique([id, organizationId])
@@ -270,6 +293,473 @@ model InvitationBranch {
 
   @@id([invitationId, branchId])
   @@map("invitation_branches")
+}
+
+// ---------------------------------------------------------------------------
+// Sequences (human-readable numbers such as member and invoice numbers)
+// ---------------------------------------------------------------------------
+
+model OrganizationSequence {
+  organizationId String @map("organization_id") @db.Uuid
+  key            String
+  nextValue      Int    @default(1) @map("next_value")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@id([organizationId, key])
+  @@map("organization_sequences")
+}
+
+// ---------------------------------------------------------------------------
+// Members
+// ---------------------------------------------------------------------------
+
+enum MemberVisibility {
+  ORGANIZATION
+  HOME_BRANCH
+}
+
+enum MemberStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+/// A gym customer. Belongs to the organization; the home branch is where they normally train.
+model Member {
+  id                       String       @id @default(uuid()) @db.Uuid
+  organizationId           String       @map("organization_id") @db.Uuid
+  homeBranchId             String       @map("home_branch_id") @db.Uuid
+  memberNumber             String       @map("member_number")
+  firstName                String       @map("first_name")
+  lastName                 String       @map("last_name")
+  email                    String?
+  phone                    String?
+  dateOfBirth              DateTime?    @map("date_of_birth") @db.Date
+  addressLine1             String?      @map("address_line1")
+  city                     String?
+  postalCode               String?      @map("postal_code")
+  emergencyContactName     String?      @map("emergency_contact_name")
+  emergencyContactPhone    String?      @map("emergency_contact_phone")
+  emergencyContactRelation String?      @map("emergency_contact_relation")
+  /// Sensitive: health information. Requires members.sensitive.read.
+  medicalNotes             String?      @map("medical_notes")
+  tags                     String[]     @default([])
+  status                   MemberStatus @default(ACTIVE)
+  archivedAt               DateTime?    @map("archived_at") @db.Timestamptz(3)
+  createdById              String?      @map("created_by_id") @db.Uuid
+  createdAt                DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  homeBranch   Branch          @relation(fields: [homeBranchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  notes        MemberNote[]
+  memberships  GymMembership[]
+  invoices     Invoice[]
+  payments     Payment[]
+  checkIns     CheckIn[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, memberNumber])
+  @@index([organizationId, lastName, firstName])
+  @@index([organizationId, phone])
+  @@index([organizationId, email])
+  @@index([organizationId, homeBranchId])
+  @@map("members")
+}
+
+model MemberNote {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  memberId       String   @map("member_id") @db.Uuid
+  authorId       String?  @map("author_id") @db.Uuid
+  body           String
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  member       Member       @relation(fields: [memberId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([organizationId, memberId, createdAt])
+  @@map("member_notes")
+}
+
+// ---------------------------------------------------------------------------
+// Membership plans and purchased (gym) memberships
+// ---------------------------------------------------------------------------
+
+enum PlanKind {
+  TIME_BASED
+  DAY_PASS
+  CLASS_PACK
+  PT_PACK
+}
+
+enum DurationUnit {
+  DAY
+  WEEK
+  MONTH
+  YEAR
+}
+
+enum PlanStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+model MembershipPlan {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  name            String
+  description     String?
+  kind            PlanKind     @default(TIME_BASED)
+  durationUnit    DurationUnit @map("duration_unit")
+  durationCount   Int          @map("duration_count")
+  /// Sessions included for class and PT packs.
+  sessionCount    Int?         @map("session_count")
+  priceMinor      Int          @map("price_minor")
+  joiningFeeMinor Int          @default(0) @map("joining_fee_minor")
+  currency        String       @db.Char(3)
+  taxRateBps      Int          @default(0) @map("tax_rate_bps")
+  taxInclusive    Boolean      @default(true) @map("tax_inclusive")
+  gracePeriodDays Int          @default(0) @map("grace_period_days")
+  maxFreezeDays   Int          @default(0) @map("max_freeze_days")
+  /// true: usable at every branch. false: only branches listed in plan_branches.
+  allBranches     Boolean      @default(true) @map("all_branches")
+  status          PlanStatus   @default(ACTIVE)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branches     PlanBranch[]
+  memberships  GymMembership[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, name])
+  @@map("membership_plans")
+}
+
+model PlanBranch {
+  planId         String @map("plan_id") @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  branchId       String @map("branch_id") @db.Uuid
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plan         MembershipPlan @relation(fields: [planId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  branch       Branch         @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@id([planId, branchId])
+  @@map("plan_branches")
+}
+
+/// Stored state. "Expired", "scheduled" and "in grace" are derived from dates at read time.
+enum GymMembershipStatus {
+  ACTIVE
+  FROZEN
+  CANCELLED
+}
+
+/// A member's purchased agreement. Plan details are snapshotted so plan edits never rewrite history.
+model GymMembership {
+  id                   String              @id @default(uuid()) @db.Uuid
+  organizationId       String              @map("organization_id") @db.Uuid
+  memberId             String              @map("member_id") @db.Uuid
+  planId               String              @map("plan_id") @db.Uuid
+  /// Branch where it was sold.
+  branchId             String              @map("branch_id") @db.Uuid
+  status               GymMembershipStatus @default(ACTIVE)
+  startDate            DateTime            @map("start_date") @db.Date
+  endDate              DateTime            @map("end_date") @db.Date
+  planName             String              @map("plan_name")
+  planKind             PlanKind            @map("plan_kind")
+  priceMinor           Int                 @map("price_minor")
+  currency             String              @db.Char(3)
+  gracePeriodDays      Int                 @default(0) @map("grace_period_days")
+  allBranches          Boolean             @map("all_branches")
+  sessionsTotal        Int?                @map("sessions_total")
+  sessionsUsed         Int                 @default(0) @map("sessions_used")
+  frozenFrom           DateTime?           @map("frozen_from") @db.Date
+  frozenUntil          DateTime?           @map("frozen_until") @db.Date
+  freezeDaysUsed       Int                 @default(0) @map("freeze_days_used")
+  maxFreezeDays        Int                 @default(0) @map("max_freeze_days")
+  cancelledAt          DateTime?           @map("cancelled_at") @db.Timestamptz(3)
+  cancelReason         String?             @map("cancel_reason")
+  previousMembershipId String?             @map("previous_membership_id") @db.Uuid
+  createdById          String?             @map("created_by_id") @db.Uuid
+  createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  member       Member             @relation(fields: [memberId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  plan         MembershipPlan     @relation(fields: [planId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  branch       Branch             @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  changes      MembershipChange[]
+  invoiceLines InvoiceLine[]
+  checkIns     CheckIn[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, memberId])
+  @@index([organizationId, endDate])
+  @@map("gym_memberships")
+}
+
+enum MembershipChangeType {
+  CREATED
+  FROZEN
+  RESUMED
+  EXTENDED
+  CANCELLED
+  RENEWED
+}
+
+/// Append-only history of a membership's lifecycle.
+model MembershipChange {
+  id             String               @id @default(uuid()) @db.Uuid
+  organizationId String               @map("organization_id") @db.Uuid
+  membershipId   String               @map("membership_id") @db.Uuid
+  type           MembershipChangeType
+  fromEndDate    DateTime?            @map("from_end_date") @db.Date
+  toEndDate      DateTime?            @map("to_end_date") @db.Date
+  days           Int?
+  reason         String?
+  actorId        String?              @map("actor_id") @db.Uuid
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  membership   GymMembership @relation(fields: [membershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([organizationId, membershipId, createdAt])
+  @@map("membership_changes")
+}
+
+// ---------------------------------------------------------------------------
+// Billing
+// Optional cross-tenant references (e.g. invoice.member_id) use a single-column FK plus the
+// fg_assert_same_organization trigger, because composite FKs can't be optional in Prisma.
+// ---------------------------------------------------------------------------
+
+enum InvoiceStatus {
+  OPEN
+  PAID
+  VOID
+}
+
+enum InvoiceSource {
+  MEMBERSHIP
+  POS
+  MANUAL
+}
+
+/// Issued invoices are immutable apart from payment totals and voiding.
+model Invoice {
+  id                  String        @id @default(uuid()) @db.Uuid
+  organizationId      String        @map("organization_id") @db.Uuid
+  branchId            String        @map("branch_id") @db.Uuid
+  memberId            String?       @map("member_id") @db.Uuid
+  number              String
+  source              InvoiceSource
+  status              InvoiceStatus @default(OPEN)
+  currency            String        @db.Char(3)
+  /// Sum of line net amounts (after discounts, excluding tax).
+  subtotalMinor       Int           @map("subtotal_minor")
+  discountMinor       Int           @default(0) @map("discount_minor")
+  taxMinor            Int           @map("tax_minor")
+  totalMinor          Int           @map("total_minor")
+  amountPaidMinor     Int           @default(0) @map("amount_paid_minor")
+  amountRefundedMinor Int           @default(0) @map("amount_refunded_minor")
+  /// Client-generated key so a double-submitted sale creates one invoice.
+  idempotencyKey      String?       @map("idempotency_key")
+  issuedAt            DateTime      @default(now()) @map("issued_at") @db.Timestamptz(3)
+  dueDate             DateTime?     @map("due_date") @db.Date
+  notes               String?
+  voidedAt            DateTime?     @map("voided_at") @db.Timestamptz(3)
+  voidReason          String?       @map("void_reason")
+  createdById         String?       @map("created_by_id") @db.Uuid
+  createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branch       Branch           @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  member       Member?          @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  lines        InvoiceLine[]
+  payments     Payment[]
+  refunds      Refund[]
+  attempts     PaymentAttempt[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, number])
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, memberId])
+  @@index([organizationId, status])
+  @@index([organizationId, branchId, issuedAt])
+  @@map("invoices")
+}
+
+/// Snapshot of what was sold. Never updated after the invoice is issued.
+model InvoiceLine {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  invoiceId      String  @map("invoice_id") @db.Uuid
+  sortOrder      Int     @default(0) @map("sort_order")
+  description    String
+  quantity       Int
+  unitPriceMinor Int     @map("unit_price_minor")
+  discountMinor  Int     @default(0) @map("discount_minor")
+  taxRateBps     Int     @map("tax_rate_bps")
+  taxInclusive   Boolean @map("tax_inclusive")
+  netMinor       Int     @map("net_minor")
+  taxMinor       Int     @map("tax_minor")
+  totalMinor     Int     @map("total_minor")
+  membershipId   String? @map("membership_id") @db.Uuid
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  invoice      Invoice        @relation(fields: [invoiceId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  membership   GymMembership? @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, invoiceId])
+  @@index([membershipId])
+  @@map("invoice_lines")
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  UPI
+  BANK_TRANSFER
+  ONLINE
+}
+
+model Payment {
+  id                  String        @id @default(uuid()) @db.Uuid
+  organizationId      String        @map("organization_id") @db.Uuid
+  branchId            String        @map("branch_id") @db.Uuid
+  invoiceId           String        @map("invoice_id") @db.Uuid
+  memberId            String?       @map("member_id") @db.Uuid
+  receiptNumber       String        @map("receipt_number")
+  amountMinor         Int           @map("amount_minor")
+  amountRefundedMinor Int           @default(0) @map("amount_refunded_minor")
+  currency            String        @db.Char(3)
+  method              PaymentMethod
+  reference           String?
+  receivedAt          DateTime      @default(now()) @map("received_at") @db.Timestamptz(3)
+  receivedById        String?       @map("received_by_id") @db.Uuid
+  idempotencyKey      String?       @map("idempotency_key")
+  provider            String?
+  providerPaymentId   String?       @map("provider_payment_id")
+  createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branch       Branch       @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  invoice      Invoice      @relation(fields: [invoiceId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  member       Member?      @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  refunds      Refund[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, receiptNumber])
+  @@unique([organizationId, idempotencyKey])
+  @@unique([provider, providerPaymentId])
+  @@index([organizationId, branchId, receivedAt])
+  @@index([organizationId, invoiceId])
+  @@map("payments")
+}
+
+model Refund {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  paymentId      String   @map("payment_id") @db.Uuid
+  invoiceId      String   @map("invoice_id") @db.Uuid
+  amountMinor    Int      @map("amount_minor")
+  reason         String
+  refundedById   String?  @map("refunded_by_id") @db.Uuid
+  idempotencyKey String?  @map("idempotency_key")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  payment      Payment      @relation(fields: [paymentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  invoice      Invoice      @relation(fields: [invoiceId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, createdAt])
+  @@map("refunds")
+}
+
+enum PaymentAttemptStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+/// An online checkout started with a payment provider (sandbox only for now).
+model PaymentAttempt {
+  id                String               @id @default(uuid()) @db.Uuid
+  organizationId    String               @map("organization_id") @db.Uuid
+  invoiceId         String               @map("invoice_id") @db.Uuid
+  provider          String
+  providerReference String               @unique @map("provider_reference")
+  amountMinor       Int                  @map("amount_minor")
+  currency          String               @db.Char(3)
+  status            PaymentAttemptStatus @default(PENDING)
+  failureReason     String?              @map("failure_reason")
+  createdById       String?              @map("created_by_id") @db.Uuid
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  invoice      Invoice      @relation(fields: [invoiceId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([organizationId, invoiceId])
+  @@map("payment_attempts")
+}
+
+/// Inbound provider webhook events, stored for idempotency and audit. Platform-level.
+model ProviderEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  provider    String
+  eventId     String    @map("event_id")
+  type        String
+  payload     Json
+  status      String    @default("RECEIVED")
+  error       String?
+  receivedAt  DateTime  @default(now()) @map("received_at") @db.Timestamptz(3)
+  processedAt DateTime? @map("processed_at") @db.Timestamptz(3)
+
+  @@unique([provider, eventId])
+  @@map("provider_events")
+}
+
+// ---------------------------------------------------------------------------
+// Attendance
+// ---------------------------------------------------------------------------
+
+enum CheckInStatus {
+  ALLOWED
+  DENIED
+}
+
+enum CheckInMethod {
+  MANUAL
+  QR
+}
+
+model CheckIn {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  branchId       String        @map("branch_id") @db.Uuid
+  memberId       String        @map("member_id") @db.Uuid
+  membershipId   String?       @map("membership_id") @db.Uuid
+  status         CheckInStatus
+  denialReason   String?       @map("denial_reason")
+  method         CheckInMethod @default(MANUAL)
+  checkedInAt    DateTime      @default(now()) @map("checked_in_at") @db.Timestamptz(3)
+  checkedOutAt   DateTime?     @map("checked_out_at") @db.Timestamptz(3)
+  recordedById   String?       @map("recorded_by_id") @db.Uuid
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branch       Branch         @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  member       Member         @relation(fields: [memberId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  membership   GymMembership? @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, branchId, checkedInAt])
+  @@index([organizationId, memberId, checkedInAt])
+  @@map("check_ins")
 }
 
 // ---------------------------------------------------------------------------

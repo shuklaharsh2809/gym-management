@@ -17,13 +17,45 @@ export type AuditAction =
   | "invitation.created"
   | "invitation.resent"
   | "invitation.revoked"
-  | "invitation.accepted";
+  | "invitation.accepted"
+  | "member.created"
+  | "member.updated"
+  | "member.archived"
+  | "member.restored"
+  | "member.note_added"
+  | "plan.created"
+  | "plan.updated"
+  | "plan.archived"
+  | "plan.restored"
+  | "membership.created"
+  | "membership.frozen"
+  | "membership.resumed"
+  | "membership.extended"
+  | "membership.cancelled"
+  | "membership.renewed"
+  | "invoice.created"
+  | "invoice.voided"
+  | "payment.recorded"
+  | "payment.refunded"
+  | "payment.online_started"
+  | "checkin.recorded"
+  | "checkin.denied";
 
 export interface AuditEvent {
   organizationId: string | null;
   actorUserId: string | null;
   action: AuditAction;
-  entityType: "organization" | "branch" | "organization_membership" | "invitation";
+  entityType:
+    | "organization"
+    | "branch"
+    | "organization_membership"
+    | "invitation"
+    | "member"
+    | "membership_plan"
+    | "membership"
+    | "invoice"
+    | "payment"
+    | "check_in";
   entityId?: string;
   /** Non-sensitive context only. Never include secrets or personal/financial details. */
   metadata?: Prisma.InputJsonObject;

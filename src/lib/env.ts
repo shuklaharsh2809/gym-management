@@ -6,6 +6,10 @@ const serverEnvSchema = z.object({
   BETTER_AUTH_SECRET: z.string().min(32, "BETTER_AUTH_SECRET must be at least 32 characters"),
   BETTER_AUTH_URL: z.url(),
   EMAIL_TRANSPORT: z.enum(["console"]).default("console"),
+  /** Shared secret for signing/verifying sandbox payment webhooks. */
+  PAYMENTS_SANDBOX_WEBHOOK_SECRET: z
+    .string()
+    .min(32, "PAYMENTS_SANDBOX_WEBHOOK_SECRET must be at least 32 characters"),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
