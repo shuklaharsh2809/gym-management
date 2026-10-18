@@ -1,4 +1,4 @@
-import { Clock, CreditCard, Smile } from "lucide-react";
+import { Clock, CreditCard, Smile } from "@/components/icons";
 import type { Metadata } from "next";
 import { FeatureGrid, Hero, Section } from "@/components/shared/marketing";
 import { PHOTOS } from "@/lib/imagery";
@@ -9,7 +9,7 @@ export default function GymsPage() {
   return (
     <>
       <Hero
-        photo={PHOTOS.deadlift}
+        photo={PHOTOS.trainerTablet}
         eyebrow="Independent gyms & studios"
         title="Spend less time on admin and more on your members"
         body="Set up in an afternoon: add your plans, import members and start checking people in."
