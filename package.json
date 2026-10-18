@@ -30,12 +30,12 @@
     "jobs:work": "tsx scripts/run-jobs.ts"
   },
   "dependencies": {
+    "@phosphor-icons/react": "2.1.10",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "better-auth": "^1.7.10",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^1.59.0",
     "next": "^16.4.2",
     "pg": "^8.23.1",
     "radix-ui": "^1.8.1",

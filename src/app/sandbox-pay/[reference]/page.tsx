@@ -1,4 +1,4 @@
-import { CheckCircle2, FlaskConical, XCircle } from "lucide-react";
+import { CheckCircle2, FlaskConical, XCircle } from "@/components/icons";
 import type { Metadata } from "next";
 import { Money } from "@/components/business/money";
 import { EmptyState } from "@/components/shared/empty-state";

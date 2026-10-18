@@ -1,4 +1,4 @@
-import { MapPin, Plus } from "lucide-react";
+import { MapPin, Plus } from "@/components/icons";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BranchStatusBadge } from "@/components/business/branch-status-badge";

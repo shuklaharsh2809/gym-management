@@ -93,18 +93,27 @@ Accessibility is checked automatically: `tests/e2e/accessibility-platform.spec.t
 
 ## Imagery
 
-FitGrid should look like a gym product, not a generic dashboard. Photography sets that context:
+FitGrid should look like a premium gym product, not a generic dashboard.
 
 - **Where:** the marketing heroes and closing call to action, the sign-in panel, the dashboard welcome banner,
   front desk branch cards and class thumbnails. Data-dense screens (tables, forms, finance) stay photo-free.
-- **Source:** `src/lib/imagery.ts` is the only catalogue. Files live in `src/assets/images/` and are
+- **Style:** dark, editorial interiors and real coaching moments; one consistent navy scrim over every photo.
+- **Licence:** Unsplash License only (free for commercial use, no attribution required); paid Unsplash+
+  images are excluded. Sources are listed in `src/assets/images/CREDITS.md`.
+- **Source of truth:** `src/lib/imagery.ts` is the only catalogue. Files live in `src/assets/images/` and are
   bundled with `next/image`, so they're optimized, blur-placeholdered and served from our origin
-  (CSP keeps `img-src 'self'`). Licences are listed in `src/assets/images/CREDITS.md` (Unsplash License).
-- **Text on photos:** always place it on the navy scrim (`PhotoBackdrop`), never directly on the image,
-  so contrast meets WCAG AA. Decorative photos use `alt=""`; content photos use the catalogue `alt`.
-- **People:** members and staff get initials avatars (`InitialsAvatar`), never stock faces, so a
-  real person is never shown as someone they aren't.
+  (CSP keeps `img-src 'self'`).
+- **Text on photos:** always on the navy scrim (`PhotoBackdrop`), never directly on the image, so contrast meets
+  WCAG AA. Decorative photos use `alt=""`; content photos use the catalogue `alt`.
+- **People:** members and staff get initials avatars (`InitialsAvatar`), never stock faces.
 - **Logo:** the mark is a dumbbell on emerald (`shared/logo.tsx`, `app/icon.svg`).
+
+## Icons
+
+Icons come from [Phosphor Icons](https://phosphoricons.com) (MIT) through one module, `src/components/icons.tsx`.
+Import icons only from there. Semantic icons (navigation, stats, empty states, feature tiles) use the
+**duotone** weight; small controls (chevrons, close, add, check) use **bold** so they stay crisp at 16px.
+Pass `weight` to override in a specific place. To add an icon, map it in `icons.tsx` with its default weight.
 
 ## Not yet built
 

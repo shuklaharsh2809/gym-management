@@ -1,6 +1,6 @@
 "use client";
 
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen } from "@/components/icons";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Logo, LogoMark } from "@/components/shared/logo";

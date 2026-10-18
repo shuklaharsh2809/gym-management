@@ -1,4 +1,4 @@
-import { Plus, UsersRound } from "lucide-react";
+import { Plus, UsersRound } from "@/components/icons";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { EmptyState } from "@/components/shared/empty-state";

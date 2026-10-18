@@ -1,4 +1,4 @@
-import { MailWarning } from "lucide-react";
+import { MailWarning } from "@/components/icons";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";

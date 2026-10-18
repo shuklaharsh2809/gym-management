@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check } from "@/components/icons";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Hero, Section } from "@/components/shared/marketing";
@@ -27,7 +27,7 @@ export default async function PricingPage() {
   return (
     <>
       <Hero
-        photo={PHOTOS.dumbbells}
+        photo={PHOTOS.dumbbellsTeal}
         eyebrow="Pricing"
         title="Simple plans that grow with you"
         body="Every plan starts with a 14-day free trial. Prices exclude taxes."

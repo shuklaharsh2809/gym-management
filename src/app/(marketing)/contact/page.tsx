@@ -10,7 +10,7 @@ export default function ContactPage() {
   return (
     <>
       <Hero
-        photo={PHOTOS.battleRopes}
+        photo={PHOTOS.reception}
         eyebrow="Contact"
         title="Let's talk about your gym"
         body="Tell us about your business and we'll show you how FitGrid fits."

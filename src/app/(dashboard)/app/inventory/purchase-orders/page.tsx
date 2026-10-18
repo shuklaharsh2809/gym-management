@@ -1,4 +1,4 @@
-import { ClipboardList, Plus } from "lucide-react";
+import { ClipboardList, Plus } from "@/components/icons";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Money } from "@/components/business/money";

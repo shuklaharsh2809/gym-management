@@ -8,7 +8,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
     <div className="grid min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
       <aside className="relative isolate hidden flex-col justify-between overflow-hidden bg-brand p-10 text-white lg:flex">
         <PhotoBackdrop
-          photo={PHOTOS.squat}
+          photo={PHOTOS.coaching}
           priority
           sizes="42vw"
           scrim="bg-gradient-to-t from-brand via-brand/70 to-brand/20"

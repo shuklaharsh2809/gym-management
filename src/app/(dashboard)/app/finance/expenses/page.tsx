@@ -1,4 +1,4 @@
-import { Receipt } from "lucide-react";
+import { Receipt } from "@/components/icons";
 import type { Metadata } from "next";
 import { Money } from "@/components/business/money";
 import { EmptyState } from "@/components/shared/empty-state";

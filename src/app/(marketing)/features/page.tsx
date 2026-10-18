@@ -11,7 +11,7 @@ import {
   Upload,
   Users,
   Wrench,
-} from "lucide-react";
+} from "@/components/icons";
 import type { Metadata } from "next";
 import { FeatureGrid, Hero, Section } from "@/components/shared/marketing";
 import { PHOTOS } from "@/lib/imagery";
@@ -22,7 +22,7 @@ export default function FeaturesPage() {
   return (
     <>
       <Hero
-        photo={PHOTOS.cardioFloor}
+        photo={PHOTOS.clubTimber}
         eyebrow="Features"
         title="Everything a fitness business runs on"
         body="One platform for members, money, schedules, staff and facilities."

@@ -1,4 +1,4 @@
-import { FileText } from "lucide-react";
+import { FileText } from "@/components/icons";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Money } from "@/components/business/money";

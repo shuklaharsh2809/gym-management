@@ -7,7 +7,7 @@ import {
   ShieldCheck,
   Users,
   Wrench,
-} from "lucide-react";
+} from "@/components/icons";
 import Link from "next/link";
 import { PhotoBackdrop, PhotoCard } from "@/components/business/photo";
 import { FeatureGrid, Hero, Section } from "@/components/shared/marketing";
@@ -18,7 +18,7 @@ export default function LandingPage() {
   return (
     <>
       <Hero
-        photo={PHOTOS.gymFloor}
+        photo={PHOTOS.clubDark}
         eyebrow="Gym & fitness business management"
         title="Every location. One connected business."
         body="FitGrid brings members, memberships, payments, attendance, staff, classes, equipment and inventory together across all of your branches."
@@ -30,17 +30,17 @@ export default function LandingPage() {
         <div className="grid gap-6 md:grid-cols-3">
           {[
             {
-              photo: PHOTOS.gymInterior,
+              photo: PHOTOS.reception,
               title: "Front desk & check-in",
               body: "Members scan in and staff see straight away whether their membership is valid, frozen or expired.",
             },
             {
-              photo: PHOTOS.yogaClass,
+              photo: PHOTOS.groupClass,
               title: "Classes & coaching",
               body: "Yoga, spin, HIIT and personal training, with live capacity, waitlists and trainer schedules.",
             },
             {
-              photo: PHOTOS.dumbbells,
+              photo: PHOTOS.rackRow,
               title: "Gym floor & equipment",
               body: "Every treadmill, rack and bike tracked with maintenance schedules and work orders.",
             },
@@ -117,7 +117,7 @@ export default function LandingPage() {
         </Section>
       </section>
       <section className="relative isolate overflow-hidden text-white">
-        <PhotoBackdrop photo={PHOTOS.deadliftDark} scrim="bg-brand/75" />
+        <PhotoBackdrop photo={PHOTOS.barbellMono} scrim="bg-brand/75" />
         <div className="mx-auto flex max-w-6xl flex-col items-start gap-6 px-4 py-20 sm:px-6">
           <h2 className="max-w-2xl text-3xl font-semibold tracking-tight">
             Spend less time on admin and more time on the gym floor.

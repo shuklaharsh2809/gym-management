@@ -1,4 +1,4 @@
-import { Lock } from "lucide-react";
+import { Lock } from "@/components/icons";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "./empty-state";
 

@@ -1,4 +1,4 @@
-import { CalendarClock } from "lucide-react";
+import { CalendarClock } from "@/components/icons";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ConfirmAction } from "@/components/shared/confirm-action";
