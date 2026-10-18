@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, Printer } from "lucide-react";
+import { ExternalLink, Printer } from "@/components/icons";
 import { useActionState, useState, useTransition } from "react";
 import { ActionMessage } from "@/components/shared/action-message";
 import { CopyLink } from "@/components/shared/copy-link";

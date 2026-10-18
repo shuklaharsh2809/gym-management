@@ -1,4 +1,4 @@
-import { CalendarCheck, CreditCard, Pencil, ShoppingBag } from "lucide-react";
+import { CalendarCheck, CreditCard, Pencil, ShoppingBag } from "@/components/icons";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Money } from "@/components/business/money";

@@ -1,4 +1,4 @@
-import { Bell } from "lucide-react";
+import { Bell } from "@/components/icons";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { EmptyState } from "@/components/shared/empty-state";

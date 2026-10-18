@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Trash2 } from "@/components/icons";
 import { useActionState, useState } from "react";
 import { ActionMessage } from "@/components/shared/action-message";
 import { SubmitButton } from "@/components/shared/submit-button";

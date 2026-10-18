@@ -12,7 +12,7 @@ import {
   ShoppingBag,
   UserPlus,
   Users,
-} from "lucide-react";
+} from "@/components/icons";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DailyBarChart, DailyLineChart, HourBarChart } from "@/components/business/charts";
@@ -124,7 +124,7 @@ export default async function DashboardPage() {
   return (
     <>
       <section className="relative isolate mb-6 overflow-hidden rounded-xl bg-brand text-white shadow-card">
-        <PhotoBackdrop photo={PHOTOS.gymFloor} priority sizes="(min-width: 1024px) 75vw, 100vw" />
+        <PhotoBackdrop photo={PHOTOS.floorWide} priority sizes="(min-width: 1024px) 75vw, 100vw" />
         <div className="flex flex-col gap-5 p-6 sm:p-8">
           <div>
             <p className="text-sm font-medium text-accent">

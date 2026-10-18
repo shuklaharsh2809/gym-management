@@ -1,4 +1,4 @@
-import { Plane } from "lucide-react";
+import { Plane } from "@/components/icons";
 import type { Metadata } from "next";
 import { ConfirmAction } from "@/components/shared/confirm-action";
 import { EmptyState } from "@/components/shared/empty-state";

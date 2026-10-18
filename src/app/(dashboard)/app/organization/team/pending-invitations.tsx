@@ -1,6 +1,6 @@
 "use client";
 
-import { RotateCw, X } from "lucide-react";
+import { RotateCw, X } from "@/components/icons";
 import { useState, useTransition } from "react";
 import { CopyLink } from "@/components/shared/copy-link";
 import { Alert } from "@/components/ui/alert";

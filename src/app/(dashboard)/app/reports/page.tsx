@@ -1,4 +1,4 @@
-import { Download } from "lucide-react";
+import { Download } from "@/components/icons";
 import type { Metadata } from "next";
 import { DailyBarChart, DailyLineChart, HourBarChart } from "@/components/business/charts";
 import { Money } from "@/components/business/money";

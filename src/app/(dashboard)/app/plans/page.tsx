@@ -1,4 +1,4 @@
-import { Plus, Tags } from "lucide-react";
+import { Plus, Tags } from "@/components/icons";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Money } from "@/components/business/money";

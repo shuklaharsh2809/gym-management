@@ -1,4 +1,4 @@
-import { Truck } from "lucide-react";
+import { Truck } from "@/components/icons";
 import type { Metadata } from "next";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";

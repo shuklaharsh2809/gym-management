@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin } from "lucide-react";
+import { MapPin } from "@/components/icons";
 import Image from "next/image";
 import { useState, useTransition } from "react";
 import { Alert } from "@/components/ui/alert";

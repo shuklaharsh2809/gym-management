@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, LogOut, XCircle } from "lucide-react";
+import { CheckCircle2, LogOut, XCircle } from "@/components/icons";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";

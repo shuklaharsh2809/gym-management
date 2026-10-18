@@ -1,4 +1,4 @@
-import { CreditCard } from "lucide-react";
+import { CreditCard } from "@/components/icons";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MembershipStateBadge } from "@/components/business/status-badges";

@@ -1,4 +1,4 @@
-import { ScanLine, Search } from "lucide-react";
+import { ScanLine, Search } from "@/components/icons";
 import type { Metadata } from "next";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
