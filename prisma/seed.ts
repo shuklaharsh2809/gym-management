@@ -21,7 +21,8 @@ if (PLATFORM_ADMIN_PASSWORD.length < 12)
   throw new Error("SEED_PLATFORM_ADMIN_PASSWORD must be at least 12 characters");
 
 const db = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
+  // keepAlive helps long seeds against a remote database survive idle NAT/proxy timeouts.
+  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL!, keepAlive: true }),
 });
 
 interface DemoUser {
