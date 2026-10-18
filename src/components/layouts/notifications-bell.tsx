@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell } from "lucide-react";
+import { Bell } from "@/components/icons";
 import Link from "next/link";
 import { useTransition } from "react";
 import { markReadAction } from "@/app/(dashboard)/app/settings/actions";

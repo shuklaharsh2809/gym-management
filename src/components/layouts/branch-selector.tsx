@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, MapPin } from "lucide-react";
+import { ChevronDown, MapPin } from "@/components/icons";
 import { useTransition } from "react";
 import { switchBranchAction } from "@/app/(dashboard)/app/actions";
 import {

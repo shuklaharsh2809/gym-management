@@ -28,14 +28,14 @@ import {
   Users,
   UsersRound,
   Wallet,
-  type LucideIcon,
-} from "lucide-react";
+  type AppIcon,
+} from "@/components/icons";
 import type { Permission } from "@/server/authorization/permissions";
 
 export interface NavItem {
   href: string;
   label: string;
-  icon: LucideIcon;
+  icon: AppIcon;
   /** Hides the link for users without the permission. Pages enforce access on the server. */
   permission?: Permission;
   exact?: boolean;

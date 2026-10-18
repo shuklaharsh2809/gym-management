@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+import type { AppIcon } from "@/components/icons";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Card } from "@/components/ui/card";
@@ -10,7 +10,7 @@ export function StatCard({
   detail,
   href,
 }: {
-  icon: LucideIcon;
+  icon: AppIcon;
   label: string;
   value: ReactNode;
   detail?: ReactNode;

@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, ChevronsUpDown, Plus } from "lucide-react";
+import { Building2, ChevronsUpDown, Plus } from "@/components/icons";
 import Link from "next/link";
 import { useTransition } from "react";
 import { switchOrganizationAction } from "@/app/(dashboard)/app/actions";

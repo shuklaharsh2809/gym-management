@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+import type { AppIcon } from "@/components/icons";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { PhotoBackdrop } from "@/components/business/photo";
@@ -47,14 +47,14 @@ export function Hero({
 export function FeatureGrid({
   items,
 }: {
-  items: { icon: LucideIcon; title: string; body: ReactNode }[];
+  items: { icon: AppIcon; title: string; body: ReactNode }[];
 }) {
   return (
     <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
       {items.map(({ icon: Icon, title, body }) => (
         <div key={title}>
-          <div className="flex size-10 items-center justify-center rounded-md bg-success-subtle">
-            <Icon className="size-5 text-primary" aria-hidden />
+          <div className="flex size-12 items-center justify-center rounded-xl bg-success-subtle ring-1 ring-primary/10">
+            <Icon className="size-6 text-primary" aria-hidden />
           </div>
           <h3 className="mt-3 font-semibold">{title}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{body}</p>
