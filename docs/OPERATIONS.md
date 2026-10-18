@@ -23,8 +23,10 @@ All are validated at startup (`src/lib/env.ts`).
 3. **Set variables** (Production): `BETTER_AUTH_SECRET`, `PAYMENTS_SANDBOX_WEBHOOK_SECRET`, `CRON_SECRET`
    (each `openssl rand -base64 32`), `BETTER_AUTH_URL` = the production URL, e.g. `https://<project>.vercel.app`,
    and `EMAIL_TRANSPORT=console`.
-4. **Deploy.** Vercel runs `npm run vercel-build` = `prisma migrate deploy && next build`, so pending
-   migrations are applied before each release (never `migrate dev` or `reset` in production).
+4. **Deploy.** Vercel runs `npm run vercel-build` (`scripts/vercel-build.sh`): production builds apply
+   pending migrations with `prisma migrate deploy`, then `next build`. Preview builds skip migrations, because
+   Neon connects previews to the same database unless preview branching is enabled. Never run
+   `migrate dev` or `reset` in production.
 5. **Scheduled work.** `vercel.json` runs `/api/cron/daily` at 00:30 UTC (Hobby plans allow daily crons only);
    it queues the day's work and drains the job queue. For faster webhook/notification delivery, call
    `POST /api/jobs/run` every few minutes from any scheduler with `Authorization: Bearer $CRON_SECRET`,
